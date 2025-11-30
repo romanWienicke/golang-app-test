@@ -1,45 +1,31 @@
 package user
 
 import (
-	"database/sql"
+	"context"
 
-	"github.com/romanWienicke/go-app-test/business/data/db/dbuser"
+	"github.com/romanWienicke/go-app-test/business/user/data"
+	"github.com/romanWienicke/go-app-test/foundation/postgres"
 )
 
 type User struct {
-	conn *sql.DB
+	db *postgres.Db
 }
 
-func NewUser(db *sql.DB) *User {
+func NewUser(db *postgres.Db) *User {
 	return &User{
-		conn: db,
+		db: db,
 	}
 }
 
-func (u *User) GetUserByID(id int) (dbuser.User, error) {
-	// Implement database retrieval logic here
-	r, err := u.conn.Query("select id, name, email from users where id = $1", id)
-	if err != nil {
-		return dbuser.User{}, err
-	}
-	defer func() {
-		if err := r.Close(); err != nil {
-			panic(err)
-		}
-	}()
-
-	var user dbuser.User
-	// Process the result set
-	r.Next()
-	err = r.Scan(&user.ID, &user.Name, &user.Email)
-	if err != nil {
-		return dbuser.User{}, err
-	}
-	return user, nil
+func (u *User) GetUserByID(ctx context.Context, id int) (*data.DbUser, error) {
+	return postgres.QueryOne[data.DbUser](ctx, u.db.GetDB(), "select id, name, email from users where id=$1", id)
 }
 
-func (u *User) CreateUser(user dbuser.User) error {
-	// Implement database insertion logic here
-	_, err := u.conn.Exec("insert into users(name, email) values ($1, $2)", user.Name, user.Email)
-	return err
+func (u *User) CreateUser(ctx context.Context, user data.DbUser) (int, error) {
+	var id int
+	err := u.db.GetDB().QueryRowContext(ctx,
+		"insert into users (name, email) values ($1, $2) returning id;",
+		user.Name, user.Email).Scan(&id)
+	// You can use 'id' as needed, e.g., return it or log it
+	return id, err
 }

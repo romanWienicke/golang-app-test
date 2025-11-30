@@ -1,13 +1,13 @@
-package main
+package app
 
 import (
-	"database/sql"
+	"fmt"
 	"net/http"
 	"os"
 	"testing"
 	"time"
 
-	"github.com/romanWienicke/go-app-test/business/data/db"
+	"github.com/joho/godotenv"
 	"github.com/romanWienicke/go-app-test/docker"
 	"github.com/romanWienicke/go-app-test/webtest"
 )
@@ -18,52 +18,53 @@ func startServer(t *testing.T) string {
 		port = "8080"
 	}
 
-	if err := os.Setenv("PORT", port); err != nil {
+	if err := os.Setenv("HTTP_PORT", port); err != nil {
 		t.Fatalf("Failed to set PORT environment variable: %v", err)
 	}
 
-	go main()
+	go func() {
+		a, err := NewApp()
+		if err != nil {
+			panic(fmt.Sprintf("Failed to initialize app: %v", err))
+		}
+
+		a.Run()
+	}()
+
 	// Allow some time for the server to start
 	time.Sleep(1 * time.Second)
 
 	return port
 }
 
-func startup(t *testing.T) *sql.DB {
+func startup(t *testing.T) {
+	if err := godotenv.Load("../.env"); err != nil {
+		t.Fatalf("No .env file found (continuing)")
+	}
+
 	// Any necessary initialization before tests run
-	composeFile := "docker-compose.yaml"
+	composeFile := "../docker-compose.yaml"
 	dc, err := docker.ComposeUp(composeFile, "postgres")
 	if err != nil {
 		t.Fatalf("Failed to start Docker Compose: %v", err)
 	}
 
-	conn, err := db.ConnectPostgres("localhost", dc["postgres"].HostPorts["5432"], "root", "root", "testDb")
-	if err != nil {
-		t.Fatalf("Failed to connect to Postgres database: %v", err)
-	}
-
-	if err := db.InitDb(conn); err != nil {
-		t.Fatalf("Failed to initialize Postgres database: %v", err)
-	}
-
-	return conn
+	os.Setenv("DB_HOST", "localhost")
+	os.Setenv("DB_PORT", dc["postgres"].HostPorts["5432"])
 }
 
 func Test_Application(t *testing.T) {
-	conn := startup(t)
+	startup(t)
+
 	t.Cleanup(func() {
 		t.Helper()
 
-		if err := docker.ComposeDown("docker-compose.yaml"); err != nil {
+		if err := docker.ComposeDown("../docker-compose.yaml"); err != nil {
 			t.Errorf("Failed to stop Docker Compose: %v", err)
 		}
 	})
 
-	_ = conn // Use conn in your tests
-
-	port := startServer(t)
-	tester := webtest.NewWebTest(port)
-
+	tester := webtest.NewWebTest(startServer(t))
 	tests := map[string]webtest.TestCase{
 		"GET /": {
 			Method:       http.MethodGet,
