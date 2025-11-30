@@ -1,0 +1,56 @@
+{
+    "forwardPorts": [],
+    "dockerFile": "Dockerfile",
+    "remoteUser": "vscode",
+    "forwardAgent": true,
+    "features": {
+        "ghcr.io/devcontainers/features/docker-in-docker:2": {
+            "moby": false
+        }
+    },
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "golang.go",
+                "golang.tools",
+                "golang.gopls",
+                "golang.dlv",
+                "streetsidesoftware.code-spell-checker",
+                "eamodio.gitlens",
+                "gruntfuggly.todo-tree",
+                "redhat.vscode-yaml",
+                "42crunch.vscode-openapi",
+                "chrisdias.vscode-opennewinstance",
+                "george-alisson.html-preview-vscode",
+                "ms-azuretools.vscode-docker"
+            ],
+            "settings": {
+                "go.useLanguageServer": true,
+                "go.toolsManagement.checkForUpdates": "local",
+                "go.languageServerExperimentalFeatures": {
+                    "diagnostics": true,
+                    "documentLink": true
+                },
+                "[go]": {
+                    "editor.formatOnSave": true,
+                    "editor.codeActionsOnSave": {
+                        "source.organizeImports": "always"
+                    }
+                },
+                "go.lintTool": "golangci-lint",
+                "gopls": {
+                    "formatting.gofumpt": true,
+                    "usePlaceholders": false
+                },
+                "terminal.integrated.defaultProfile.linux": "bash"
+            }
+        },
+        "terminal.integrated.defaultProfile.linux": "bash"
+    },
+    "runArgs": [
+        "--cap-add=SYS_PTRACE",
+        "--security-opt",
+        "seccomp=unconfined",
+        "--network=host"
+    ]
+}
