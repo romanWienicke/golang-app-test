@@ -1,11 +1,14 @@
 package main
 
 import (
+	"database/sql"
 	"net/http"
 	"os"
 	"testing"
 	"time"
 
+	"github.com/romanWienicke/go-app-test/business/data/db"
+	"github.com/romanWienicke/go-app-test/docker"
 	"github.com/romanWienicke/go-app-test/webtest"
 )
 
@@ -26,7 +29,38 @@ func startServer(t *testing.T) string {
 	return port
 }
 
+func startup(t *testing.T) *sql.DB {
+	// Any necessary initialization before tests run
+	composeFile := "docker-compose.yaml"
+	dc, err := docker.ComposeUp(composeFile, "postgres")
+	if err != nil {
+		t.Fatalf("Failed to start Docker Compose: %v", err)
+	}
+
+	conn, err := db.ConnectPostgres("localhost", dc["postgres"].HostPorts["5432"], "root", "root", "testDb")
+	if err != nil {
+		t.Fatalf("Failed to connect to Postgres database: %v", err)
+	}
+
+	if err := db.InitDb(conn); err != nil {
+		t.Fatalf("Failed to initialize Postgres database: %v", err)
+	}
+
+	return conn
+}
+
 func Test_Application(t *testing.T) {
+	conn := startup(t)
+	t.Cleanup(func() {
+		t.Helper()
+
+		if err := docker.ComposeDown("docker-compose.yaml"); err != nil {
+			t.Errorf("Failed to stop Docker Compose: %v", err)
+		}
+	})
+
+	_ = conn // Use conn in your tests
+
 	port := startServer(t)
 	tester := webtest.NewWebTest(port)
 

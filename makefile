@@ -9,3 +9,6 @@ test:
 
 tidy:
 	go mod tidy
+
+pipeline-test:
+	act push

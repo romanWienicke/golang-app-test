@@ -1,0 +1,185 @@
+package docker
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"os"
+	"os/exec"
+	"strings"
+	"time"
+)
+
+// Container tracks information about the docker container started for tests.
+type Container struct {
+	Name      string
+	HostPorts map[string]string
+}
+
+type portMapping struct {
+	HostIP   string
+	HostPort string
+}
+
+// ComposeUp starts the specified docker-compose services and returns their container information.
+// If no service names are provided, all services in the compose file are started.
+// It returns a map of service names to their corresponding Container information.
+func ComposeUp(composeFile string, serviceNames ...string) (map[string]Container, error) {
+	_, err := os.Stat(composeFile)
+	if err != nil {
+		return nil, fmt.Errorf("compose file not found: %s", composeFile)
+	}
+
+	args := []string{"-f", composeFile, "up", "-d"}
+	if len(serviceNames) > 0 {
+		args = append(args, serviceNames...)
+	}
+
+	cmd := exec.Command("docker-compose", args...)
+	if err := cmd.Run(); err != nil {
+		return nil, fmt.Errorf("could not start docker-compose service: %w", err)
+	}
+
+	containers, err := fromCompose(composeFile, serviceNames)
+	if err != nil {
+		return nil, fmt.Errorf("could not get docker-compose containers: %w", err)
+	}
+
+	return containers, nil
+}
+
+// fromCompose retrieves container information from the specified docker-compose file.
+// It parses the compose file to get service definitions and their ports,
+// then inspects each service's container to get the actual host port mappings.
+// It returns a map of service names to their corresponding Container information.
+func fromCompose(composeFile string, serviceNames []string) (map[string]Container, error) {
+	compose, err := ParseDockerComposeFile(composeFile)
+	if err != nil {
+		return nil, fmt.Errorf("could not parse docker-compose file: %s", composeFile)
+	}
+	containers := make(map[string]Container, len(compose.Services))
+	for serviceName, service := range compose.Services {
+		if notFound(serviceNames, serviceName) {
+			continue
+		}
+
+		portMappings, err := getServicePortsFromCompose(serviceName, service)
+		if err != nil {
+			return nil, fmt.Errorf("could not get ports for service %s: %w", serviceName, err)
+		}
+
+		hostPorts := make(map[string]string, len(portMappings))
+		for i, pm := range portMappings {
+			hostPorts[service.Ports[i].Port] = pm.HostPort
+		}
+
+		c := Container{
+			Name:      serviceName,
+			HostPorts: hostPorts,
+		}
+		containers[serviceName] = c
+		waitForHealthy(serviceName, 20*time.Second)
+	}
+
+	return containers, nil
+}
+
+// notFound checks if an item is not present in a slice of strings.
+// It returns true if the item is not found, and false otherwise.
+func notFound(slice []string, item string) bool {
+	if len(slice) == 0 {
+		return false
+	}
+
+	for _, s := range slice {
+		if s == item {
+			return false
+		}
+	}
+
+	return true
+}
+
+// getServicePortsFromCompose retrieves the port mappings for a given service from the docker-compose setup.
+// It uses 'docker inspect' to get the actual host ports mapped to the service's defined ports.
+// It returns a slice of portMapping structs containing the HostIP and HostPort for each defined port.
+func getServicePortsFromCompose(serviceName string, service Service) ([]portMapping, error) {
+	portMappings := make([]portMapping, len(service.Ports))
+
+	for i, port := range service.Ports {
+		// inspect port mapping for each port from docker
+		tmpl := fmt.Sprintf("[{{range $i,$v := (index .NetworkSettings.Ports \"%s/%s\")}}{{if $i}},{{end}}{{json $v}}{{end}}]", port.Port, strings.ToLower(port.Protocol))
+
+		var out bytes.Buffer
+		cmd := exec.Command("docker", "inspect", "-f", tmpl, serviceName)
+		cmd.Stdout = &out
+		if err := cmd.Run(); err != nil {
+			return []portMapping{}, fmt.Errorf("could not inspect container %s: %w", serviceName, err)
+		}
+
+		var docs []struct {
+			HostIP   string `json:"HostIp"`
+			HostPort string `json:"HostPort"`
+		}
+		if err := json.Unmarshal(out.Bytes(), &docs); err != nil {
+			return []portMapping{}, fmt.Errorf("could not decode json: %w", err)
+		}
+
+		if len(docs) < 1 {
+			return []portMapping{}, fmt.Errorf("could not find port mappings for service %s", serviceName)
+		}
+
+		for _, doc := range docs {
+			if doc.HostIP != "::" {
+
+				// Podman keeps HostIP empty instead of using 0.0.0.0.
+				// - https://github.com/containers/podman/issues/17780
+				if doc.HostIP == "" {
+					portMappings[i] = portMapping{
+						HostIP:   "localhost",
+						HostPort: doc.HostPort,
+					}
+				}
+
+				portMappings[i] = portMapping{
+					HostIP:   doc.HostIP,
+					HostPort: doc.HostPort,
+				}
+			}
+		}
+	}
+
+	return portMappings, nil
+}
+
+func waitForHealthy(containerName string, timeout time.Duration) {
+	fmt.Printf("Checking if %s is healthy\n", containerName)
+	for i := 0; i < int(timeout.Seconds()); i++ {
+		cmd := exec.Command("docker", "inspect", "--format", "{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}", containerName)
+		out, err := cmd.Output()
+		status := strings.TrimSpace(string(out))
+		if err == nil && status == "healthy" {
+			fmt.Printf("%s is healthy\n", containerName)
+
+			return
+		}
+		time.Sleep(1 * time.Second)
+	}
+	panic(fmt.Sprintf("Container %s did not become healthy in time", containerName))
+}
+
+// 32773
+// ComposeDown stops the specified docker-compose services.
+// If no service names are provided, all services in the compose file are stopped.
+func ComposeDown(composeFile string, serviceNames ...string) error {
+	args := []string{"-f", composeFile, "down"}
+	if len(serviceNames) > 0 {
+		args = append(args, serviceNames...)
+	}
+
+	cmd := exec.Command("docker-compose", args...)
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("could not stop docker-compose service %s: %w", composeFile, err)
+	}
+	return nil
+}

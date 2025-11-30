@@ -1,0 +1,81 @@
+package docker
+
+import (
+	"testing"
+)
+
+func Test_DockerCompose(t *testing.T) {
+	containers, err := ComposeUp("docker-compose.yaml")
+	if err != nil {
+		t.Errorf("Failed to start Docker Compose: %v", err)
+	}
+
+	if len(containers) != 5 {
+		t.Errorf("Expected 2 containers, got %d", len(containers))
+	}
+
+	for name, container := range containers {
+		switch name {
+		case "postgres":
+			if len(container.HostPorts) != 1 {
+				t.Errorf("Expected 1 port for Postgres, got %d", len(container.HostPorts))
+			}
+		case "kafka":
+			if len(container.HostPorts) != 2 {
+				t.Errorf("Expected 2 ports for Kafka, got %d", len(container.HostPorts))
+			}
+		}
+	}
+
+	_ = containers // Use containers in your tests
+	t.Cleanup(func() {
+		t.Helper()
+
+		if err := ComposeDown("../docker/docker-compose.yaml"); err != nil {
+			t.Errorf("Failed to stop Kafka container: %v", err)
+		}
+	})
+}
+
+func Test_DockerCompose_SpecificService(t *testing.T) {
+	tests := map[string]struct {
+		serviceNames       []string
+		expectedContainers int
+	}{
+		"timescale only": {
+			serviceNames:       []string{"timescale"},
+			expectedContainers: 1,
+		},
+		"kafka only": {
+			serviceNames:       []string{"kafka"},
+			expectedContainers: 1,
+		},
+		"timescale and kafka": {
+			serviceNames:       []string{"timescale", "kafka"},
+			expectedContainers: 2,
+		},
+		"wiremock only": {
+			serviceNames:       []string{"wiremock"},
+			expectedContainers: 1,
+		},
+	}
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			containers, err := ComposeUp("docker-compose.yaml", tc.serviceNames...)
+			if err != nil {
+				t.Errorf("Failed to start Docker Compose: %v", err)
+			}
+
+			if len(containers) != tc.expectedContainers {
+				t.Errorf("Expected %d containers, got %d", tc.expectedContainers, len(containers))
+			}
+			t.Cleanup(func() {
+				t.Helper()
+
+				if err := ComposeDown("../docker/docker-compose.yaml", tc.serviceNames...); err != nil {
+					t.Errorf("Failed to stop containers: %v", err)
+				}
+			})
+		})
+	}
+}
