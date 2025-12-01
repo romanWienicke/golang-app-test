@@ -116,17 +116,61 @@ func (app *WebTest) expect(t *testing.T, resp *ResponseWithTime, expectedStatus 
 	}
 
 	if expectedBody != nil {
-		bodyBytes, err := io.ReadAll(resp.Response.Body)
-		if err != nil {
-			t.Fatalf("Failed to read response body: %v", err)
-		}
-		bodyString := string(bodyBytes)
-		bodyString = strings.TrimSpace(bodyString)
-
-		if bodyString != expectedBody {
-			t.Errorf("Expected body %v, got %v", expectedBody, bodyString)
+		switch v := expectedBody.(type) {
+		case string:
+			// Compare as string
+			bodyBytes, err := io.ReadAll(resp.Response.Body)
+			if err != nil {
+				t.Fatalf("Failed to read response body: %v", err)
+			}
+			bodyString := strings.TrimSpace(string(bodyBytes))
+			if bodyString != v {
+				t.Errorf("Expected body %v, got %v", v, bodyString)
+			}
+		case map[string]interface{}:
+			// Compare as JSON
+			bodyBytes, err := io.ReadAll(resp.Response.Body)
+			if err != nil {
+				t.Fatalf("Failed to read response body: %v", err)
+			}
+			var actualBody map[string]interface{}
+			if err := json.Unmarshal(bodyBytes, &actualBody); err != nil {
+				t.Fatalf("Failed to unmarshal response body: %v", err)
+			}
+			if !equalJSON(actualBody, v) {
+				t.Errorf("Expected body %v, got %v", v, actualBody)
+			}
+		default:
+			t.Fatalf("Unsupported expectedBody type: %T", expectedBody)
 		}
 	}
+}
+
+func equalJSON(a, b map[string]interface{}) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for k, vA := range a {
+		vB, ok := b[k]
+		if !ok {
+			return false
+		}
+		switch vA := vA.(type) {
+		case map[string]interface{}:
+			vBMap, ok := vB.(map[string]interface{})
+			if !ok {
+				return false
+			}
+			if !equalJSON(vA, vBMap) {
+				return false
+			}
+		default:
+			if fmt.Sprintf("%v", vA) != fmt.Sprintf("%v", vB) {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 // GetRandomOpenPort returns a random open port as a string

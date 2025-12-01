@@ -44,7 +44,7 @@ func startup(t *testing.T) {
 
 	// Any necessary initialization before tests run
 	composeFile := "../docker-compose.yaml"
-	dc, err := docker.ComposeUp(composeFile, "postgres")
+	dc, err := docker.ComposeUp(composeFile)
 	if err != nil {
 		t.Fatalf("Failed to start Docker Compose: %v", err)
 	}
@@ -56,13 +56,13 @@ func startup(t *testing.T) {
 func Test_Application(t *testing.T) {
 	startup(t)
 
-	t.Cleanup(func() {
-		t.Helper()
+	// t.Cleanup(func() {
+	// 	t.Helper()
 
-		if err := docker.ComposeDown("../docker-compose.yaml"); err != nil {
-			t.Errorf("Failed to stop Docker Compose: %v", err)
-		}
-	})
+	// 	if err := docker.ComposeDown("../docker-compose.yaml"); err != nil {
+	// 		t.Errorf("Failed to stop Docker Compose: %v", err)
+	// 	}
+	// })
 
 	tester := webtest.NewWebTest(startServer(t))
 	tests := map[string]webtest.TestCase{
@@ -114,6 +114,19 @@ func Test_Application(t *testing.T) {
 			Payload:      "invalid json",
 			ExpectedCode: http.StatusBadRequest,
 			ExpectedBody: `{"error":"Invalid request body"}`,
+		},
+		"1 POST /user with valid data": {
+			Method:       http.MethodPost,
+			Path:         "/user",
+			Payload:      map[string]interface{}{"name": "Alice", "email": "alice@example.com"},
+			ExpectedCode: http.StatusCreated,
+			ExpectedBody: map[string]interface{}{"id": 1, "name": "Alice", "email": "alice@example.com"},
+		},
+		"2 GET /user/:id": {
+			Method:       http.MethodGet,
+			Path:         "/user/1",
+			ExpectedCode: http.StatusOK,
+			ExpectedBody: map[string]interface{}{"id": 1, "name": "Alice", "email": "alice@example.com"},
 		},
 	}
 

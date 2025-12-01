@@ -75,6 +75,9 @@ func QueryOne[T any](ctx context.Context, db *sqlx.DB, query string, args ...any
 	var result T
 	err := db.GetContext(ctx, &result, query, args...)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, ErrNoRows
+		}
 		return nil, err
 	}
 	return &result, nil

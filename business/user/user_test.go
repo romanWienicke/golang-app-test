@@ -2,28 +2,21 @@ package user
 
 import (
 	"context"
-	"os"
 	"testing"
 
 	"github.com/romanWienicke/go-app-test/business/user/data"
-	"github.com/romanWienicke/go-app-test/docker"
-	"github.com/romanWienicke/go-app-test/foundation/postgres"
+	test "github.com/romanWienicke/go-app-test/foundation/testing"
 )
 
 func TestCreateUser(t *testing.T) {
-	dc, err := docker.ComposeUp("../../docker-compose.yaml", "postgres")
-	if err != nil {
-		t.Fatalf("Failed to start Docker Compose: %v", err)
-	}
-	defer docker.ComposeDown("../../docker-compose.yaml")
-	os.Setenv("DB_HOST", "localhost")
-	os.Setenv("DB_PORT", dc["postgres"].HostPorts["5432"])
+	test.SetEnv(t, "../../.env")
+	test.DockerComposeUp(t, "../../docker-compose.yaml", "postgres")
+	db := test.InitPostgres(t, "../../foundation/db_migrations")
 
-	db, err := initPostgres()
-	if err != nil {
-		t.Fatalf("Failed to initialize Postgres: %v", err)
-	}
-	defer db.Close()
+	// t.Cleanup(func() {
+	// 	db.Close()
+	// 	test.DockerComposeDown(t, "../../docker-compose.yaml")
+	// })
 
 	userService := NewUser(db)
 
@@ -46,24 +39,4 @@ func TestCreateUser(t *testing.T) {
 	if retrievedUser.Name != newUser.Name || retrievedUser.Email != newUser.Email {
 		t.Fatalf("Retrieved user does not match created user")
 	}
-}
-
-func initPostgres() (*postgres.Db, error) {
-	dbConfig := postgres.Config{
-		Host:     os.Getenv("DB_HOST"),
-		Port:     os.Getenv("DB_PORT"),
-		User:     os.Getenv("DB_USER"),
-		Password: os.Getenv("DB_PASSWORD"),
-		DBName:   os.Getenv("DB_NAME"),
-	}
-	db, err := postgres.NewPostgres(dbConfig)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := db.Init("../foundation/db_migrations"); err != nil {
-		return nil, err
-	}
-
-	return db, nil
 }

@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -21,6 +22,8 @@ type portMapping struct {
 	HostPort string
 }
 
+var composeOnce sync.Once
+
 // ComposeUp starts the specified docker-compose services and returns their container information.
 // If no service names are provided, all services in the compose file are started.
 // It returns a map of service names to their corresponding Container information.
@@ -30,14 +33,19 @@ func ComposeUp(composeFile string, serviceNames ...string) (map[string]Container
 		return nil, fmt.Errorf("compose file not found: %s", composeFile)
 	}
 
-	args := []string{"-f", composeFile, "up", "-d"}
-	if len(serviceNames) > 0 {
-		args = append(args, serviceNames...)
-	}
-
-	cmd := exec.Command("docker-compose", args...)
-	if err := cmd.Run(); err != nil {
-		return nil, fmt.Errorf("could not start docker-compose service: %w", err)
+	var upErr error
+	composeOnce.Do(func() {
+		args := []string{"-f", composeFile, "up", "-d"}
+		if len(serviceNames) > 0 {
+			args = append(args, serviceNames...)
+		}
+		cmd := exec.Command("docker-compose", args...)
+		if err := cmd.Run(); err != nil {
+			upErr = fmt.Errorf("could not start docker-compose service: %w", err)
+		}
+	})
+	if upErr != nil {
+		return nil, upErr
 	}
 
 	containers, err := fromCompose(composeFile, serviceNames)

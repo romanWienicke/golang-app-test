@@ -11,9 +11,16 @@ type Payload struct {
 	Key string `json:"key" validate:"required"`
 }
 
-func NewServer(port string) error {
+type RouteAdder func(e *echo.Echo)
+
+func NewServer(port string, adders ...RouteAdder) error {
 	e := echo.New()
 	validator := validator.New()
+
+	// Register routes from RouteAdders
+	for _, addRoute := range adders {
+		addRoute(e)
+	}
 
 	e.GET("/", func(c echo.Context) error {
 		return c.String(http.StatusOK, "Hello, world!")

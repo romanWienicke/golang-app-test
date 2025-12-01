@@ -85,4 +85,4 @@ echo >> /home/vscode/.bashrc
 echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> /home/vscode/.bashrc
 eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
 
-su vscode -c "brew install act"
+# su vscode -c "brew install act"

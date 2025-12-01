@@ -7,12 +7,14 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/romanWienicke/go-app-test/business/user"
 	"github.com/romanWienicke/go-app-test/foundation/postgres"
 	"github.com/romanWienicke/go-app-test/rest"
 )
 
 type app struct {
-	db *postgres.Db
+	db       *postgres.Db
+	userbuis *user.UserBuis
 }
 
 func NewApp() (*app, error) {
@@ -20,6 +22,8 @@ func NewApp() (*app, error) {
 	if err := app.init(); err != nil {
 		return nil, err
 	}
+
+	// app.userbuis = user.NewUser(app.db)
 
 	return app, nil
 }
@@ -34,8 +38,9 @@ func (a *app) runServer() {
 		port = "8080"
 	}
 	// Start the REST server in a goroutine
+
 	go func() {
-		if err := rest.NewServer(port); err != nil {
+		if err := rest.NewServer(port, a.userbuis.RouteAdder()); err != nil {
 			log.Fatalf("Server failed: %v", err)
 		}
 	}()
@@ -63,6 +68,7 @@ func (a *app) init() error {
 
 	errs = errors.Join(errs, a.initPostgres())
 
+	a.userbuis = user.NewUser(a.db)
 	return errs
 }
 
