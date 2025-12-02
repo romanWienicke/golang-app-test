@@ -28,13 +28,14 @@ var composeOnce sync.Once
 // If no service names are provided, all services in the compose file are started.
 // It returns a map of service names to their corresponding Container information.
 func ComposeUp(composeFile string, serviceNames ...string) (map[string]Container, error) {
-	_, err := os.Stat(composeFile)
-	if err != nil {
-		return nil, fmt.Errorf("compose file not found: %s", composeFile)
-	}
-
 	var upErr error
 	composeOnce.Do(func() {
+		_, err := os.Stat(composeFile)
+		if err != nil {
+			upErr = fmt.Errorf("compose file not found: %s", composeFile)
+			return
+		}
+
 		args := []string{"-f", composeFile, "up", "-d"}
 		if len(serviceNames) > 0 {
 			args = append(args, serviceNames...)
@@ -44,6 +45,7 @@ func ComposeUp(composeFile string, serviceNames ...string) (map[string]Container
 			upErr = fmt.Errorf("could not start docker-compose service: %w", err)
 		}
 	})
+
 	if upErr != nil {
 		return nil, upErr
 	}

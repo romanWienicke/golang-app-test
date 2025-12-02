@@ -21,8 +21,12 @@ func DockerComposeUp(t *testing.T, composeFile string, service string) {
 		t.Fatalf("Failed to start Docker Compose: %v", err)
 	}
 
-	os.Setenv("DB_HOST", "localhost")
-	os.Setenv("DB_PORT", dc["postgres"].HostPorts["5432"])
+	if err := os.Setenv("DB_HOST", "localhost"); err != nil {
+		t.Fatalf("Failed to set DB_HOST environment variable: %v", err)
+	}
+	if err := os.Setenv("DB_PORT", dc["postgres"].HostPorts["5432"]); err != nil {
+		t.Fatalf("Failed to set DB_PORT environment variable: %v", err)
+	}
 }
 
 func DockerComposeDown(t *testing.T, composeFile string) {

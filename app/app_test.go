@@ -49,8 +49,15 @@ func startup(t *testing.T) {
 		t.Fatalf("Failed to start Docker Compose: %v", err)
 	}
 
-	os.Setenv("DB_HOST", "localhost")
-	os.Setenv("DB_PORT", dc["postgres"].HostPorts["5432"])
+	if err := os.Setenv("DB_HOST", "localhost"); err != nil {
+		t.Fatalf("Failed to set DB_HOST environment variable: %v", err)
+	}
+	if err := os.Setenv("DB_PORT", dc["postgres"].HostPorts["5432"]); err != nil {
+		t.Fatalf("Failed to set DB_PORT environment variable: %v", err)
+	}
+	if err := os.Setenv("DB_PORT", dc["postgres"].HostPorts["5432"]); err != nil {
+		t.Fatalf("Failed to set DB_PORT environment variable: %v", err)
+	}
 }
 
 func Test_Application(t *testing.T) {
@@ -116,17 +123,18 @@ func Test_Application(t *testing.T) {
 			ExpectedBody: `{"error":"Invalid request body"}`,
 		},
 		"1 POST /user with valid data": {
-			Method:       http.MethodPost,
-			Path:         "/user",
-			Payload:      map[string]interface{}{"name": "Alice", "email": "alice@example.com"},
-			ExpectedCode: http.StatusCreated,
-			ExpectedBody: map[string]interface{}{"id": 1, "name": "Alice", "email": "alice@example.com"},
+			Method:              http.MethodPost,
+			Path:                "/user",
+			Payload:             map[string]interface{}{"name": "Alice", "email": "alice@example.com"},
+			ExpectedCode:        http.StatusCreated,
+			ExpectedBodyPattern: "{\"id\":(?P<id>\\d+),\"name\":\"Alice\",\"email\":\"alice@example.com\"}",
 		},
 		"2 GET /user/:id": {
-			Method:       http.MethodGet,
-			Path:         "/user/1",
-			ExpectedCode: http.StatusOK,
-			ExpectedBody: map[string]interface{}{"id": 1, "name": "Alice", "email": "alice@example.com"},
+			Method:              http.MethodGet,
+			Path:                "/user/:id",
+			ExpectedCode:        http.StatusOK,
+			ExpectedBodyPattern: "{\"id\":\\d+,\"name\":\"Alice\",\"email\":\"alice@example.com\"}",
+			// ExpectedBody: map[string]interface{}{"id": 1, "name": "Alice", "email": "alice@example.com"},
 		},
 	}
 

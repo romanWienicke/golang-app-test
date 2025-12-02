@@ -12,3 +12,9 @@ tidy:
 
 pipeline-test:
 	act push
+
+fpush:
+	git push --force-with-lease
+
+commit-ammend:
+	git commit --amend --no-edit
