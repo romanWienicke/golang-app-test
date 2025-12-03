@@ -86,5 +86,5 @@ func (a *app) initPostgres() error {
 		return err
 	}
 
-	return a.db.Init("../foundation/db_migrations")
+	return a.db.Init("../migrations")
 }

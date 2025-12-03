@@ -11,12 +11,16 @@ import (
 func TestCreateUser(t *testing.T) {
 	test.SetEnv(t, "../../.env")
 	test.DockerComposeUp(t, "../../docker-compose.yaml", "postgres")
-	db := test.InitPostgres(t, "../../foundation/db_migrations")
-	defer db.Close()
-	// t.Cleanup(func() {
-	// 	db.Close()
-	// 	test.DockerComposeDown(t, "../../docker-compose.yaml")
-	// })
+	db := test.InitPostgres(t, "../../migrations")
+	defer func() {
+		if err := db.Close(); err != nil {
+			t.Errorf("Failed to close db: %v", err)
+		}
+	}()
+	t.Cleanup(func() {
+		t.Helper()
+		test.DockerComposeDown(t, "../../docker-compose.yaml")
+	})
 
 	userService := NewUser(db)
 
