@@ -10,7 +10,8 @@ import (
 
 func TestCreateUser(t *testing.T) {
 	test.SetEnv(t, "../../.env")
-	test.DockerComposeUp(t, "../../docker-compose.yaml", "postgres")
+	dc := test.DockerComposeUp(t, "../../docker-compose.yaml", "postgres")
+	test.SetupDatabaseEnv(t, dc["postgres"])
 	db := test.InitPostgres(t, "../../migrations")
 	defer func() {
 		if err := db.Close(); err != nil {

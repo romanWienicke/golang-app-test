@@ -7,8 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/joho/godotenv"
-	"github.com/romanWienicke/go-app-test/docker"
+	test "github.com/romanWienicke/go-app-test/foundation/testing"
 	"github.com/romanWienicke/go-app-test/webtest"
 )
 
@@ -38,26 +37,13 @@ func startServer(t *testing.T) string {
 }
 
 func startup(t *testing.T) {
-	if err := godotenv.Load("../.env"); err != nil {
-		t.Fatalf("No .env file found (continuing)")
-	}
-
-	// Any necessary initialization before tests run
-	composeFile := "../docker-compose.yaml"
-	dc, err := docker.ComposeUp(t, composeFile)
-	if err != nil {
-		t.Fatalf("Failed to start Docker Compose: %v", err)
-	}
+	test.SetEnv(t, "../.env")
+	dc := test.DockerComposeUp(t, "../docker-compose.yaml")
 
 	if err := os.Setenv("DB_HOST", "localhost"); err != nil {
 		t.Fatalf("Failed to set DB_HOST environment variable: %v", err)
 	}
-	if err := os.Setenv("DB_PORT", dc["postgres"].HostPorts["5432"]); err != nil {
-		t.Fatalf("Failed to set DB_PORT environment variable: %v", err)
-	}
-	if err := os.Setenv("DB_PORT", dc["postgres"].HostPorts["5432"]); err != nil {
-		t.Fatalf("Failed to set DB_PORT environment variable: %v", err)
-	}
+	test.SetupDatabaseEnv(t, dc["postgres"])
 }
 
 func Test_Application(t *testing.T) {
@@ -65,10 +51,7 @@ func Test_Application(t *testing.T) {
 
 	t.Cleanup(func() {
 		// t.Helper()
-
-		if err := docker.ComposeDown(t, "../docker-compose.yaml"); err != nil {
-			t.Errorf("Failed to stop Docker Compose: %v", err)
-		}
+		test.DockerComposeDown(t, "../docker-compose.yaml")
 	})
 
 	tester := webtest.NewWebTest(startServer(t))

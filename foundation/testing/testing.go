@@ -15,16 +15,23 @@ func SetEnv(t *testing.T, envFile string) {
 	}
 }
 
-func DockerComposeUp(t *testing.T, composeFile string, service string) {
-	dc, err := docker.ComposeUp(t, composeFile, service)
+func DockerComposeUp(t *testing.T, composeFile string, services ...string) map[string]docker.Container {
+	wd, _ := os.Getwd()
+	t.Logf("Current working directory: %s", wd)
+
+	dc, err := docker.ComposeUp(t, composeFile, services...)
 	if err != nil {
 		t.Fatalf("Failed to start Docker Compose: %v", err)
 	}
 
+	return dc
+}
+
+func SetupDatabaseEnv(t *testing.T, container docker.Container) {
 	if err := os.Setenv("DB_HOST", "localhost"); err != nil {
 		t.Fatalf("Failed to set DB_HOST environment variable: %v", err)
 	}
-	if err := os.Setenv("DB_PORT", dc["postgres"].HostPorts["5432"]); err != nil {
+	if err := os.Setenv("DB_PORT", container.HostPorts["5432"]); err != nil {
 		t.Fatalf("Failed to set DB_PORT environment variable: %v", err)
 	}
 }
