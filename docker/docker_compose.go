@@ -47,9 +47,13 @@ func ComposeUp(t *testing.T, composeFile string, serviceNames ...string) (map[st
 		if len(serviceNames) > 0 {
 			args = append(args, serviceNames...)
 		}
-		cmd := exec.Command("docker-compose", args...)
+
+		var out bytes.Buffer
+		cmd := exec.Command("docker", append([]string{"compose"}, args...)...)
+		cmd.Stdout = &out
+		cmd.Stderr = &out
 		if err := cmd.Run(); err != nil {
-			upErr = fmt.Errorf("could not start docker-compose service: %w", err)
+			upErr = fmt.Errorf("could not start docker compose %s: %v; output: %s", composeFile, err, strings.TrimSpace(out.String()))
 		}
 	})
 
@@ -201,9 +205,12 @@ func ComposeDown(t *testing.T, composeFile string, serviceNames ...string) error
 			args = append(args, serviceNames...)
 		}
 
-		cmd := exec.Command("docker-compose", args...)
+		var out bytes.Buffer
+		cmd := exec.Command("docker", append([]string{"compose"}, args...)...)
+		cmd.Stdout = &out
+		cmd.Stderr = &out
 		if err := cmd.Run(); err != nil {
-			downErr = fmt.Errorf("could not stop docker-compose service %s: %w", composeFile, err)
+			downErr = fmt.Errorf("could not stop docker compose %s: %v; output: %s", composeFile, err, strings.TrimSpace(out.String()))
 		}
 	})
 	t.Logf("waiting for 3s...")
