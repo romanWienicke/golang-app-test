@@ -1,8 +1,8 @@
 services:
   
-  postgres:
+  businnes_postgres:
     image: postgres:18.1-alpine
-    container_name: postgres
+    container_name: businnes_postgres
     ports:
       - target: 5432
         published: 0

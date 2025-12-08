@@ -5,10 +5,16 @@ lint:
 	golangci-lint run ./...
 
 test:
-	go test -v ./...
+	go test --count=1 -v ./...
 
 tidy:
 	go mod tidy
 
 pipeline-test:
 	act push
+
+fpush:
+	git push --force-with-lease
+
+commit-ammend:
+	git commit --amend --no-edit
