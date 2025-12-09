@@ -50,7 +50,7 @@ func Test_Application(t *testing.T) {
 	startup(t)
 
 	t.Cleanup(func() {
-		// t.Helper()
+		t.Helper()
 		test.DockerComposeDown(t, "../docker-compose.yaml")
 	})
 

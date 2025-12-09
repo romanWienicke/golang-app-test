@@ -12,6 +12,34 @@ import (
 	"time"
 )
 
+const composeLockPath = "/tmp/golang-app-test.compose.lock"
+
+func lock(path string, timeout time.Duration) error {
+	deadline := time.Now().Add(timeout)
+	for {
+		f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
+		if err == nil {
+			// write pid for observability
+			_, _ = fmt.Fprintf(f, "%d\n", os.Getpid())
+			_ = f.Close()
+			return nil
+		}
+		if !os.IsExist(err) {
+			return fmt.Errorf("lock: unexpected error: %w", err)
+		}
+		if time.Now().After(deadline) {
+			// read current owner for diagnostics
+			b, _ := os.ReadFile(path)
+			return fmt.Errorf("lock: timeout acquiring %s (owner pid: %s)", path, strings.TrimSpace(string(b)))
+		}
+		time.Sleep(300 * time.Millisecond)
+	}
+}
+
+func unlock(path string) {
+	_ = os.Remove(path)
+}
+
 // Container tracks information about the docker container started for tests.
 type Container struct {
 	Name      string
@@ -24,41 +52,40 @@ type portMapping struct {
 }
 
 var (
-	composeUpOnce   sync.Once
-	composeDownOnce sync.Once
-	startupCount    int
+	startupCount int
+	composeMu    sync.Mutex
 )
 
 // ComposeUp starts the specified docker-compose services and returns their container information.
 // If no service names are provided, all services in the compose file are started.
 // It returns a map of service names to their corresponding Container information.
 func ComposeUp(t *testing.T, composeFile string, serviceNames ...string) (map[string]Container, error) {
-	var upErr error
-	composeUpOnce.Do(func() {
-		startupCount++
-		t.Logf("Starting docker-compose services from %s (%d)", composeFile, startupCount)
-		_, err := os.Stat(composeFile)
-		if err != nil {
-			upErr = fmt.Errorf("compose file not found: %s", composeFile)
-			return
-		}
+	composeMu.Lock()
+	defer composeMu.Unlock()
 
-		args := []string{"-f", composeFile, "up", "-d"}
-		if len(serviceNames) > 0 {
-			args = append(args, serviceNames...)
-		}
+	// inter-process lock
+	if err := lock(composeLockPath, 30*time.Second); err != nil {
+		return nil, err
+	}
+	defer unlock(composeLockPath)
 
-		var out bytes.Buffer
-		cmd := exec.Command("docker", append([]string{"compose"}, args...)...)
-		cmd.Stdout = &out
-		cmd.Stderr = &out
-		if err := cmd.Run(); err != nil {
-			upErr = fmt.Errorf("could not start docker compose %s: %v; output: %s", composeFile, err, strings.TrimSpace(out.String()))
-		}
-	})
+	t.Logf("Starting docker-compose services from %s (%d)", composeFile, startupCount)
+	_, err := os.Stat(composeFile)
+	if err != nil {
+		return nil, fmt.Errorf("compose file not found: %s", composeFile)
+	}
 
-	if upErr != nil {
-		return nil, upErr
+	args := []string{"-f", composeFile, "up", "-d"}
+	if len(serviceNames) > 0 {
+		args = append(args, serviceNames...)
+	}
+
+	var out bytes.Buffer
+	cmd := exec.Command("docker", append([]string{"compose"}, args...)...)
+	cmd.Stdout = &out
+	cmd.Stderr = &out
+	if err := cmd.Run(); err != nil {
+		return nil, fmt.Errorf("could not start docker compose %s: %v; output: %s", composeFile, err, strings.TrimSpace(out.String()))
 	}
 
 	containers, err := fromCompose(composeFile, serviceNames)
@@ -67,6 +94,37 @@ func ComposeUp(t *testing.T, composeFile string, serviceNames ...string) (map[st
 	}
 
 	return containers, nil
+}
+
+// ComposeDown stops the specified docker-compose services.
+// If no service names are provided, all services in the compose file are stopped.
+func ComposeDown(t *testing.T, composeFile string, serviceNames ...string) error {
+	composeMu.Lock()
+	defer composeMu.Unlock()
+
+	// inter-process lock
+	if err := lock(composeLockPath, 30*time.Second); err != nil {
+		return err
+	}
+	defer unlock(composeLockPath)
+
+	t.Logf("Stopping docker-compose services from %s (%d)", composeFile, startupCount)
+
+	args := []string{"-f", composeFile, "down"}
+	if len(serviceNames) > 0 {
+		args = append(args, serviceNames...)
+	}
+
+	var out bytes.Buffer
+	cmd := exec.Command("docker", append([]string{"compose"}, args...)...)
+	cmd.Stdout = &out
+	cmd.Stderr = &out
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("could not stop docker compose %s: %v; output: %s", composeFile, err, strings.TrimSpace(out.String()))
+	}
+	t.Logf("waiting for 3s...")
+	time.Sleep(3 * time.Second)
+	return nil
 }
 
 // fromCompose retrieves container information from the specified docker-compose file.
@@ -187,33 +245,4 @@ func waitForHealthy(containerName string, timeout time.Duration) {
 		time.Sleep(1 * time.Second)
 	}
 	panic(fmt.Sprintf("Container %s did not become healthy in time", containerName))
-}
-
-// 32773
-// ComposeDown stops the specified docker-compose services.
-// If no service names are provided, all services in the compose file are stopped.
-func ComposeDown(t *testing.T, composeFile string, serviceNames ...string) error {
-	var downErr error
-	composeDownOnce.Do(func() {
-		t.Logf("Stopping docker-compose services from %s (%d)", composeFile, startupCount)
-		startupCount--
-		if startupCount > 0 {
-			return
-		}
-		args := []string{"-f", composeFile, "down"}
-		if len(serviceNames) > 0 {
-			args = append(args, serviceNames...)
-		}
-
-		var out bytes.Buffer
-		cmd := exec.Command("docker", append([]string{"compose"}, args...)...)
-		cmd.Stdout = &out
-		cmd.Stderr = &out
-		if err := cmd.Run(); err != nil {
-			downErr = fmt.Errorf("could not stop docker compose %s: %v; output: %s", composeFile, err, strings.TrimSpace(out.String()))
-		}
-	})
-	t.Logf("waiting for 3s...")
-	time.Sleep(3 * time.Second)
-	return downErr
 }
