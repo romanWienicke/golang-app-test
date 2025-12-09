@@ -7,14 +7,20 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/romanWienicke/go-app-test/business/user"
 	"github.com/romanWienicke/go-app-test/foundation/postgres"
 	"github.com/romanWienicke/go-app-test/rest"
+	customerService "github.com/romanWienicke/go-app-test/service/customer"
+	orderService "github.com/romanWienicke/go-app-test/service/order"
+	productService "github.com/romanWienicke/go-app-test/service/product"
+	userService "github.com/romanWienicke/go-app-test/service/user"
 )
 
 type app struct {
-	db       *postgres.Db
-	userbuis *user.UserBuis
+	db              *postgres.Db
+	userService     *userService.UserService
+	orderService    *orderService.OrderService
+	customerService *customerService.CustomerService
+	productService  *productService.ProductService
 }
 
 func NewApp() (*app, error) {
@@ -23,7 +29,10 @@ func NewApp() (*app, error) {
 		return nil, err
 	}
 
-	// app.userbuis = user.NewUser(app.db)
+	app.userService = userService.NewUserService(app.db)
+	app.orderService = orderService.NewOrderService(app.db)
+	app.customerService = customerService.NewCustomerService(app.db)
+	app.productService = productService.NewProductService(app.db)
 
 	return app, nil
 }
@@ -40,7 +49,11 @@ func (a *app) runServer() {
 	// Start the REST server in a goroutine
 
 	go func() {
-		if err := rest.NewServer(port, a.userbuis.RouteAdder()); err != nil {
+		if err := rest.NewServer(port,
+			a.userService.RouteAdder(),
+			a.orderService.RouteAdder(),
+			a.customerService.RouteAdder(),
+			a.productService.RouteAdder()); err != nil {
 			log.Fatalf("Server failed: %v", err)
 		}
 	}()
@@ -68,7 +81,10 @@ func (a *app) init() error {
 
 	errs = errors.Join(errs, a.initPostgres())
 
-	a.userbuis = user.NewUser(a.db)
+	a.userService = userService.NewUserService(a.db)
+	a.orderService = orderService.NewOrderService(a.db)
+	a.customerService = customerService.NewCustomerService(a.db)
+	a.productService = productService.NewProductService(a.db)
 	return errs
 }
 

@@ -7,24 +7,29 @@ import (
 	"strconv"
 
 	"github.com/labstack/echo/v4"
-	"github.com/romanWienicke/go-app-test/business/user/data"
 	"github.com/romanWienicke/go-app-test/foundation/postgres"
 )
 
-type UserBuis struct {
+type User struct {
+	Id    int    `json:"id"`
+	Name  string `json:"name"`
+	Email string `json:"email"`
+}
+
+type UserService struct {
 	db *postgres.Db
 }
 
-func NewUser(db *postgres.Db) *UserBuis {
-	return &UserBuis{
+func NewUserService(db *postgres.Db) *UserService {
+	return &UserService{
 		db: db,
 	}
 }
 
-func (u *UserBuis) RouteAdder() func(e *echo.Echo) {
+func (u *UserService) RouteAdder() func(e *echo.Echo) {
 	return func(e *echo.Echo) {
 		e.POST("/user", func(c echo.Context) error {
-			var newUser data.DbUser
+			var newUser User
 			if err := c.Bind(&newUser); err != nil {
 				return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request body"})
 			}
@@ -58,11 +63,11 @@ func (u *UserBuis) RouteAdder() func(e *echo.Echo) {
 	}
 }
 
-func (u *UserBuis) GetUserByID(ctx context.Context, id int) (*data.DbUser, error) {
-	return postgres.QueryOne[data.DbUser](ctx, u.db.GetDB(), "select id, name, email from users where id=$1", id)
+func (u *UserService) GetUserByID(ctx context.Context, id int) (*User, error) {
+	return postgres.QueryOne[User](ctx, u.db.GetDB(), "select id, name, email from users where id=$1", id)
 }
 
-func (u *UserBuis) CreateUser(ctx context.Context, user data.DbUser) (int, error) {
+func (u *UserService) CreateUser(ctx context.Context, user User) (int, error) {
 	var id int
 	err := u.db.GetDB().QueryRowContext(ctx,
 		"insert into users (name, email) values ($1, $2) returning id;",

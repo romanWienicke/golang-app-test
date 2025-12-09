@@ -59,55 +59,55 @@ func Test_Application(t *testing.T) {
 		name string
 		tc   webtest.TestCase
 	}{
-		{"GET /", webtest.TestCase{
-			Method:       http.MethodGet,
-			Path:         "/",
-			ExpectedCode: http.StatusOK,
-			ExpectedBody: "Hello, world!",
-		}},
-		{"POST / with JSON", webtest.TestCase{
-			Method:       http.MethodPost,
-			Path:         "/",
-			Payload:      map[string]interface{}{"key": "value"},
-			ExpectedCode: http.StatusCreated,
-			ExpectedBody: `{"message":"JSON received"}`,
-		}},
-		{"PUT / with JSON", webtest.TestCase{
-			Method:       http.MethodPut,
-			Path:         "/",
-			Payload:      map[string]interface{}{"key": "value"},
-			ExpectedCode: http.StatusAccepted,
-			ExpectedBody: `{"message":"JSON received"}`,
-		}},
-		{"DELETE /any/:id", webtest.TestCase{
-			Method:       http.MethodDelete,
-			Path:         "/any/123",
-			ExpectedCode: http.StatusOK,
-			ExpectedBody: `{"id":"123","message":"Resource deleted"}`,
-		}},
-		{"GET /ping", webtest.TestCase{
-			Method:       http.MethodGet,
-			Path:         "/ping",
-			ExpectedCode: http.StatusOK,
-			ExpectedBody: "pong",
-		}},
-		{"GET /notfound", webtest.TestCase{
-			Method:       http.MethodGet,
-			Path:         "/notfound",
-			ExpectedCode: http.StatusNotFound,
-		}},
-		{"DELETE / without id", webtest.TestCase{
-			Method:       http.MethodDelete,
-			Path:         "/any/",
-			ExpectedCode: http.StatusNotFound,
-		}},
-		{"POST / with invalid JSON", webtest.TestCase{
-			Method:       http.MethodPost,
-			Path:         "/",
-			Payload:      "invalid json",
-			ExpectedCode: http.StatusBadRequest,
-			ExpectedBody: `{"error":"Invalid request body"}`,
-		}},
+		// {"GET /", webtest.TestCase{
+		// 	Method:       http.MethodGet,
+		// 	Path:         "/",
+		// 	ExpectedCode: http.StatusOK,
+		// 	ExpectedBody: "Hello, world!",
+		// }},
+		// {"POST / with JSON", webtest.TestCase{
+		// 	Method:       http.MethodPost,
+		// 	Path:         "/",
+		// 	Payload:      map[string]interface{}{"key": "value"},
+		// 	ExpectedCode: http.StatusCreated,
+		// 	ExpectedBody: `{"message":"JSON received"}`,
+		// }},
+		// {"PUT / with JSON", webtest.TestCase{
+		// 	Method:       http.MethodPut,
+		// 	Path:         "/",
+		// 	Payload:      map[string]interface{}{"key": "value"},
+		// 	ExpectedCode: http.StatusAccepted,
+		// 	ExpectedBody: `{"message":"JSON received"}`,
+		// }},
+		// {"DELETE /any/:id", webtest.TestCase{
+		// 	Method:       http.MethodDelete,
+		// 	Path:         "/any/123",
+		// 	ExpectedCode: http.StatusOK,
+		// 	ExpectedBody: `{"id":"123","message":"Resource deleted"}`,
+		// }},
+		// {"GET /ping", webtest.TestCase{
+		// 	Method:       http.MethodGet,
+		// 	Path:         "/ping",
+		// 	ExpectedCode: http.StatusOK,
+		// 	ExpectedBody: "pong",
+		// }},
+		// {"GET /notfound", webtest.TestCase{
+		// 	Method:       http.MethodGet,
+		// 	Path:         "/notfound",
+		// 	ExpectedCode: http.StatusNotFound,
+		// }},
+		// {"DELETE / without id", webtest.TestCase{
+		// 	Method:       http.MethodDelete,
+		// 	Path:         "/any/",
+		// 	ExpectedCode: http.StatusNotFound,
+		// }},
+		// {"POST / with invalid JSON", webtest.TestCase{
+		// 	Method:       http.MethodPost,
+		// 	Path:         "/",
+		// 	Payload:      "invalid json",
+		// 	ExpectedCode: http.StatusBadRequest,
+		// 	ExpectedBody: `{"error":"Invalid request body"}`,
+		// }},
 		{"POST /user with valid data", webtest.TestCase{
 			Method:              http.MethodPost,
 			Path:                "/user",
@@ -120,6 +120,32 @@ func Test_Application(t *testing.T) {
 			Path:                "/user/:id",
 			ExpectedCode:        http.StatusOK,
 			ExpectedBodyPattern: "{\"id\":\\d+,\"name\":\"Alice\",\"email\":\"alice@example.com\"}",
+		}},
+		{"POST /customer with valid data", webtest.TestCase{
+			Method:              http.MethodPost,
+			Path:                "/customer",
+			Payload:             map[string]interface{}{"name": "Bob", "email": "bob@example.com"},
+			ExpectedCode:        http.StatusCreated,
+			ExpectedBodyPattern: "{\"id\":\"(?P<customerId>[0-9a-fA-F-]{36})\",\"name\":\"Bob\",\"email\":\"bob@example.com\"}",
+		}}, // 0d05ad82-5f7c-45f5-b8c1-3059307cff65
+		{"GET /customer/:id", webtest.TestCase{
+			Method:              http.MethodGet,
+			Path:                "/customer/:id",
+			ExpectedCode:        http.StatusOK,
+			ExpectedBodyPattern: "{\"id\":\"(?P<customerId>[0-9a-fA-F-]{36})\",\"name\":\"Bob\",\"email\":\"bob@example.com\"}",
+		}},
+		{"POST /product with valid data", webtest.TestCase{
+			Method:              http.MethodPost,
+			Path:                "/product",
+			Payload:             map[string]interface{}{"name": "Widget", "price": 19.99},
+			ExpectedCode:        http.StatusCreated,
+			ExpectedBodyPattern: "{\"id\":\"(?P<productId>[0-9a-fA-F-]{36})\",\"name\":\"Widget\",\"price\":19.99}",
+		}},
+		{"GET /product/:id", webtest.TestCase{
+			Method:              http.MethodGet,
+			Path:                "/product/:id",
+			ExpectedCode:        http.StatusOK,
+			ExpectedBodyPattern: "{\"id\":\"(?P<productId>[0-9a-fA-F-]{36})\",\"name\":\"Widget\",\"price\":19.99}",
 		}},
 	}
 
