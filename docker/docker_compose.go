@@ -94,8 +94,6 @@ func ComposeDown(t *testing.T, composeFile string, serviceNames ...string) error
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("could not stop docker compose %s: %v; output: %s", composeFile, err, strings.TrimSpace(out.String()))
 	}
-	t.Logf("waiting for 3s...")
-	time.Sleep(3 * time.Second)
 	return nil
 }
 

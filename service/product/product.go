@@ -81,7 +81,7 @@ func (p *ProductService) RouteAdder() func(e *echo.Echo) {
 			if err := p.UpdateProduct(c.Request().Context(), updatedProduct); err != nil {
 				return c.JSON(500, map[string]string{"error": "Failed to update product"})
 			}
-			return c.NoContent(204)
+			return c.JSON(200, updatedProduct)
 		})
 
 		e.DELETE("/product/:id", func(c echo.Context) error {

@@ -59,65 +59,16 @@ func Test_Application(t *testing.T) {
 		name string
 		tc   webtest.TestCase
 	}{
-		// {"GET /", webtest.TestCase{
-		// 	Method:       http.MethodGet,
-		// 	Path:         "/",
-		// 	ExpectedCode: http.StatusOK,
-		// 	ExpectedBody: "Hello, world!",
-		// }},
-		// {"POST / with JSON", webtest.TestCase{
-		// 	Method:       http.MethodPost,
-		// 	Path:         "/",
-		// 	Payload:      map[string]interface{}{"key": "value"},
-		// 	ExpectedCode: http.StatusCreated,
-		// 	ExpectedBody: `{"message":"JSON received"}`,
-		// }},
-		// {"PUT / with JSON", webtest.TestCase{
-		// 	Method:       http.MethodPut,
-		// 	Path:         "/",
-		// 	Payload:      map[string]interface{}{"key": "value"},
-		// 	ExpectedCode: http.StatusAccepted,
-		// 	ExpectedBody: `{"message":"JSON received"}`,
-		// }},
-		// {"DELETE /any/:id", webtest.TestCase{
-		// 	Method:       http.MethodDelete,
-		// 	Path:         "/any/123",
-		// 	ExpectedCode: http.StatusOK,
-		// 	ExpectedBody: `{"id":"123","message":"Resource deleted"}`,
-		// }},
-		// {"GET /ping", webtest.TestCase{
-		// 	Method:       http.MethodGet,
-		// 	Path:         "/ping",
-		// 	ExpectedCode: http.StatusOK,
-		// 	ExpectedBody: "pong",
-		// }},
-		// {"GET /notfound", webtest.TestCase{
-		// 	Method:       http.MethodGet,
-		// 	Path:         "/notfound",
-		// 	ExpectedCode: http.StatusNotFound,
-		// }},
-		// {"DELETE / without id", webtest.TestCase{
-		// 	Method:       http.MethodDelete,
-		// 	Path:         "/any/",
-		// 	ExpectedCode: http.StatusNotFound,
-		// }},
-		// {"POST / with invalid JSON", webtest.TestCase{
-		// 	Method:       http.MethodPost,
-		// 	Path:         "/",
-		// 	Payload:      "invalid json",
-		// 	ExpectedCode: http.StatusBadRequest,
-		// 	ExpectedBody: `{"error":"Invalid request body"}`,
-		// }},
 		{"POST /user with valid data", webtest.TestCase{
 			Method:              http.MethodPost,
 			Path:                "/user",
 			Payload:             map[string]interface{}{"name": "Alice", "email": "alice@example.com"},
 			ExpectedCode:        http.StatusCreated,
-			ExpectedBodyPattern: "{\"id\":(?P<id>\\d+),\"name\":\"Alice\",\"email\":\"alice@example.com\"}",
+			ExpectedBodyPattern: "{\"id\":(?P<userId>\\d+),\"name\":\"Alice\",\"email\":\"alice@example.com\"}",
 		}},
-		{"GET /user/:id", webtest.TestCase{
+		{"GET /user/:userId", webtest.TestCase{
 			Method:              http.MethodGet,
-			Path:                "/user/:id",
+			Path:                "/user/:userId",
 			ExpectedCode:        http.StatusOK,
 			ExpectedBodyPattern: "{\"id\":\\d+,\"name\":\"Alice\",\"email\":\"alice@example.com\"}",
 		}},
@@ -128,25 +79,94 @@ func Test_Application(t *testing.T) {
 			ExpectedCode:        http.StatusCreated,
 			ExpectedBodyPattern: "{\"id\":\"(?P<customerId>[0-9a-fA-F-]{36})\",\"name\":\"Bob\",\"email\":\"bob@example.com\"}",
 		}}, // 0d05ad82-5f7c-45f5-b8c1-3059307cff65
-		{"GET /customer/:id", webtest.TestCase{
+		{"GET /customer/:customerId", webtest.TestCase{
 			Method:              http.MethodGet,
-			Path:                "/customer/:id",
+			Path:                "/customer/:customerId",
 			ExpectedCode:        http.StatusOK,
-			ExpectedBodyPattern: "{\"id\":\"(?P<customerId>[0-9a-fA-F-]{36})\",\"name\":\"Bob\",\"email\":\"bob@example.com\"}",
+			ExpectedBodyPattern: "{\"id\":\"[0-9a-fA-F-]{36}\",\"name\":\"Bob\",\"email\":\"bob@example.com\"}",
+		}},
+		{"PUT /customer/:customerId", webtest.TestCase{
+			Method:              http.MethodPut,
+			Path:                "/customer/:customerId",
+			Payload:             map[string]interface{}{"name": "Robert", "email": "robert@example.com"},
+			ExpectedCode:        http.StatusOK,
+			ExpectedBodyPattern: "{\"id\":\"[0-9a-fA-F-]{36}\",\"name\":\"Robert\",\"email\":\"robert@example.com\"}",
+		}},
+		{"GET /customer/:customerId after update", webtest.TestCase{
+			Method:              http.MethodGet,
+			Path:                "/customer/:customerId",
+			ExpectedCode:        http.StatusOK,
+			ExpectedBodyPattern: "{\"id\":\"[0-9a-fA-F-]{36}\",\"name\":\"Robert\",\"email\":\"robert@example.com\"}",
+		}},
+		{"DELETE /customer/:customerId", webtest.TestCase{
+			Method:       http.MethodDelete,
+			Path:         "/customer/:customerId",
+			ExpectedCode: http.StatusNoContent,
 		}},
 		{"POST /product with valid data", webtest.TestCase{
 			Method:              http.MethodPost,
 			Path:                "/product",
 			Payload:             map[string]interface{}{"name": "Widget", "price": 19.99},
 			ExpectedCode:        http.StatusCreated,
-			ExpectedBodyPattern: "{\"id\":\"(?P<productId>[0-9a-fA-F-]{36})\",\"name\":\"Widget\",\"price\":19.99}",
+			ExpectedBodyPattern: "{\"id\":\"(?P<productId>[0-9a-fA-F-]{36})\",\"name\":\"Widget\",\"description\":\"\",\"price\":19.99}",
 		}},
-		{"GET /product/:id", webtest.TestCase{
+		{"GET /product/:productId", webtest.TestCase{
 			Method:              http.MethodGet,
-			Path:                "/product/:id",
+			Path:                "/product/:productId",
 			ExpectedCode:        http.StatusOK,
-			ExpectedBodyPattern: "{\"id\":\"(?P<productId>[0-9a-fA-F-]{36})\",\"name\":\"Widget\",\"price\":19.99}",
+			ExpectedBodyPattern: "{\"id\":\"[0-9a-fA-F-]{36}\",\"name\":\"Widget\",\"description\":\"\",\"price\":19.99}",
 		}},
+		{"PUT /product/:productId", webtest.TestCase{
+			Method:              http.MethodPut,
+			Path:                "/product/:productId",
+			Payload:             map[string]interface{}{"name": "Super Widget", "description": "An improved widget", "price": 29.99},
+			ExpectedCode:        http.StatusOK,
+			ExpectedBodyPattern: "{\"id\":\"[0-9a-fA-F-]{36}\",\"name\":\"Super Widget\",\"description\":\"An improved widget\",\"price\":29.99}",
+		}},
+		{"GET /product/:productId after update", webtest.TestCase{
+			Method:              http.MethodGet,
+			Path:                "/product/:productId",
+			ExpectedCode:        http.StatusOK,
+			ExpectedBodyPattern: "{\"id\":\"[0-9a-fA-F-]{36}\",\"name\":\"Super Widget\",\"description\":\"An improved widget\",\"price\":29.99}",
+		}},
+		{"DELETE /product/:productId", webtest.TestCase{
+			Method:       http.MethodDelete,
+			Path:         "/product/:productId",
+			ExpectedCode: http.StatusNoContent,
+		}},
+		/*{"POST /order with valid data", webtest.TestCase{
+			Method: http.MethodPost,
+			Path:   "/order",
+			Payload: map[string]interface{}{"customer_id": "00000000-0000-0000-0000-000000000000", "items": []map[string]interface{}{
+				{"product_id": "11111111-1111-1111-1111-111111111111", "quantity": 2},
+			}},
+			ExpectedCode:        http.StatusCreated,
+			ExpectedBodyPattern: "{\"id\":\"(?P<orderId>[0-9a-fA-F-]{36})\",\"customer_id\":\"00000000-0000-0000-0000-000000000000\",\"items\":\\[\\]}",
+		}},
+		{"GET /order/:orderId", webtest.TestCase{
+			Method:              http.MethodGet,
+			Path:                "/order/:orderId",
+			ExpectedCode:        http.StatusOK,
+			ExpectedBodyPattern: "{\"id\":\"[0-9a-fA-F-]{36}\",\"customer_id\":\"00000000-0000-0000-0000-000000000000\",\"product_ids\":\\[\\]}",
+		}},
+		{"PUT /order/:orderId", webtest.TestCase{
+			Method:              http.MethodPut,
+			Path:                "/order/:orderId",
+			Payload:             map[string]interface{}{"customer_id": "00000000-0000-0000-0000-000000000000", "product_ids": []string{"11111111-1111-1111-1111-111111111111"}},
+			ExpectedCode:        http.StatusOK,
+			ExpectedBodyPattern: "{\"id\":\"[0-9a-fA-F-]{36}\",\"customer_id\":\"00000000-0000-0000-0000-000000000000\",\"product_ids\":\\[\"11111111-1111-1111-1111-111111111111\"\\]}",
+		}},
+		{"GET /order/:orderId after update", webtest.TestCase{
+			Method:              http.MethodGet,
+			Path:                "/order/:orderId",
+			ExpectedCode:        http.StatusOK,
+			ExpectedBodyPattern: "{\"id\":\"[0-9a-fA-F-]{36}\",\"customer_id\":\"00000000-0000-0000-0000-000000000000\",\"product_ids\":\\[\"11111111-1111-1111-1111-111111111111\"\\]}",
+		}},
+		{"DELETE /order/:orderId", webtest.TestCase{
+			Method:       http.MethodDelete,
+			Path:         "/order/:orderId",
+			ExpectedCode: http.StatusNoContent,
+		}},*/
 	}
 
 	for _, tc := range tests {

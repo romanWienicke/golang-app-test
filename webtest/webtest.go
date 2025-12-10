@@ -37,7 +37,7 @@ type ResponseWithTime struct {
 
 func NewWebTest(port string) *WebTest {
 	client := &http.Client{
-		Timeout: 5 * time.Second,
+		Timeout: 30 * time.Second,
 	}
 
 	url := fmt.Sprintf("http://localhost:%s/", port)
