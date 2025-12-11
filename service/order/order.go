@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"github.com/romanWienicke/go-app-test/foundation/postgres"
+	"github.com/rs/zerolog"
 )
 
 type Order struct {
@@ -35,12 +36,14 @@ func ValidateItem(oi OrderItem) error {
 }
 
 type OrderService struct {
-	db *postgres.Db
+	db  *postgres.Db
+	log *zerolog.Logger
 }
 
-func NewOrderService(db *postgres.Db) *OrderService {
+func NewOrderService(db *postgres.Db, log *zerolog.Logger) *OrderService {
 	return &OrderService{
-		db: db,
+		db:  db,
+		log: log,
 	}
 }
 
@@ -49,11 +52,13 @@ func (o *OrderService) RouteAdder() func(e *echo.Echo) {
 		e.POST("/order", func(c echo.Context) error {
 			var newOrder Order
 			if err := c.Bind(&newOrder); err != nil {
+				o.log.Error().Err(err).Msg("Failed to bind order")
 				return c.JSON(400, map[string]string{"error": "Invalid request body"})
 			}
 
 			id, err := o.CreateOrder(c.Request().Context(), newOrder)
 			if err != nil {
+				o.log.Error().Err(err).Msg("Failed to create order")
 				return c.JSON(500, map[string]string{"error": "Failed to create order"})
 			}
 
@@ -65,14 +70,17 @@ func (o *OrderService) RouteAdder() func(e *echo.Echo) {
 			idParam := c.Param("id")
 			id, err := uuid.Parse(idParam)
 			if err != nil {
+				o.log.Error().Err(err).Msg("Invalid order ID")
 				return c.JSON(400, map[string]string{"error": "Invalid order ID"})
 			}
 
 			order, err := o.GetOrderByID(c.Request().Context(), id)
 			if err != nil {
 				if err == postgres.ErrNoRows {
+					o.log.Error().Err(err).Msg("Order not found")
 					return c.JSON(404, map[string]string{"error": "Order not found"})
 				}
+				o.log.Error().Err(err).Msg("Failed to retrieve order")
 				return c.JSON(500, map[string]string{"error": "Failed to retrieve order"})
 			}
 			return c.JSON(200, order)
@@ -82,16 +90,19 @@ func (o *OrderService) RouteAdder() func(e *echo.Echo) {
 			idParam := c.Param("id")
 			id, err := uuid.Parse(idParam)
 			if err != nil {
+				o.log.Error().Err(err).Msg("Invalid order ID")
 				return c.JSON(400, map[string]string{"error": "Invalid order ID"})
 			}
 
 			var updatedOrder Order
 			if err := c.Bind(&updatedOrder); err != nil {
+				o.log.Error().Err(err).Msg("Invalid request body")
 				return c.JSON(400, map[string]string{"error": "Invalid request body"})
 			}
 			updatedOrder.ID = id
 
 			if err := o.UpdateOrder(c.Request().Context(), updatedOrder); err != nil {
+				o.log.Error().Err(err).Msg("Failed to update order")
 				return c.JSON(500, map[string]string{"error": "Failed to update order"})
 			}
 			return c.JSON(200, updatedOrder)
@@ -100,10 +111,12 @@ func (o *OrderService) RouteAdder() func(e *echo.Echo) {
 			idParam := c.Param("id")
 			id, err := uuid.Parse(idParam)
 			if err != nil {
+				o.log.Error().Err(err).Msg("Invalid order ID")
 				return c.JSON(400, map[string]string{"error": "Invalid order ID"})
 			}
 
 			if err := o.DeleteOrder(c.Request().Context(), id); err != nil {
+				o.log.Error().Err(err).Msg("Failed to delete order")
 				return c.JSON(500, map[string]string{"error": "Failed to delete order"})
 			}
 			return c.NoContent(204)

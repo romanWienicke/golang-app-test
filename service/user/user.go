@@ -8,6 +8,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/romanWienicke/go-app-test/foundation/postgres"
+	"github.com/rs/zerolog"
 )
 
 type User struct {
@@ -17,12 +18,14 @@ type User struct {
 }
 
 type UserService struct {
-	db *postgres.Db
+	db  *postgres.Db
+	log *zerolog.Logger
 }
 
-func NewUserService(db *postgres.Db) *UserService {
+func NewUserService(db *postgres.Db, log *zerolog.Logger) *UserService {
 	return &UserService{
-		db: db,
+		db:  db,
+		log: log,
 	}
 }
 
@@ -31,11 +34,13 @@ func (u *UserService) RouteAdder() func(e *echo.Echo) {
 		e.POST("/user", func(c echo.Context) error {
 			var newUser User
 			if err := c.Bind(&newUser); err != nil {
+				u.log.Error().Err(err).Msg("Failed to bind user")
 				return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request body"})
 			}
 
 			id, err := u.CreateUser(c.Request().Context(), newUser)
 			if err != nil {
+				u.log.Error().Err(err).Msg("Failed to create user")
 				return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to create user"})
 			}
 
@@ -47,14 +52,17 @@ func (u *UserService) RouteAdder() func(e *echo.Echo) {
 			idParam := c.Param("id")
 			id, err := strconv.Atoi(idParam)
 			if err != nil {
+				u.log.Error().Err(err).Msg("Invalid user ID")
 				return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid user ID"})
 			}
 
 			user, err := u.GetUserByID(c.Request().Context(), id)
 			if err != nil {
 				if errors.Is(err, postgres.ErrNoRows) {
+					u.log.Error().Err(err).Msg("User not found")
 					return c.JSON(http.StatusNotFound, map[string]string{"error": "User not found"})
 				}
+				u.log.Error().Err(err).Msg("Failed to retrieve user")
 				return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to retrieve user"})
 			}
 

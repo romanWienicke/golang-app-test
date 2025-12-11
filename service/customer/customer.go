@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"github.com/romanWienicke/go-app-test/foundation/postgres"
+	"github.com/rs/zerolog"
 )
 
 type Customer struct {
@@ -21,12 +22,14 @@ func Validate(c Customer) error {
 }
 
 type CustomerService struct {
-	db *postgres.Db
+	db  *postgres.Db
+	log *zerolog.Logger
 }
 
-func NewCustomerService(db *postgres.Db) *CustomerService {
+func NewCustomerService(db *postgres.Db, log *zerolog.Logger) *CustomerService {
 	return &CustomerService{
-		db: db,
+		db:  db,
+		log: log,
 	}
 }
 
@@ -35,11 +38,13 @@ func (cs *CustomerService) RouteAdder() func(e *echo.Echo) {
 		e.POST("/customer", func(c echo.Context) error {
 			var newCustomer Customer
 			if err := c.Bind(&newCustomer); err != nil {
+				cs.log.Error().Err(err).Msg("Failed to bind customer")
 				return c.JSON(400, map[string]string{"error": "Invalid request body"})
 			}
 
 			id, err := cs.CreateCustomer(c.Request().Context(), newCustomer)
 			if err != nil {
+				cs.log.Error().Err(err).Msg("Failed to create customer")
 				return c.JSON(500, map[string]string{"error": "Failed to create customer"})
 			}
 
@@ -50,14 +55,17 @@ func (cs *CustomerService) RouteAdder() func(e *echo.Echo) {
 			idParam := c.Param("id")
 			id, err := uuid.Parse(idParam)
 			if err != nil {
+				cs.log.Error().Err(err).Msg("Invalid customer ID")
 				return c.JSON(400, map[string]string{"error": "Invalid customer ID"})
 			}
 
 			customer, err := cs.GetCustomerByID(c.Request().Context(), id)
 			if err != nil {
 				if err == postgres.ErrNoRows {
+					cs.log.Error().Err(err).Msg("Customer not found")
 					return c.JSON(404, map[string]string{"error": "Customer not found"})
 				}
+				cs.log.Error().Err(err).Msg("Failed to retrieve customer")
 				return c.JSON(500, map[string]string{"error": "Failed to retrieve customer"})
 			}
 			return c.JSON(200, customer)
@@ -66,16 +74,19 @@ func (cs *CustomerService) RouteAdder() func(e *echo.Echo) {
 			idParam := c.Param("id")
 			id, err := uuid.Parse(idParam)
 			if err != nil {
+				cs.log.Error().Err(err).Msg("Invalid customer ID")
 				return c.JSON(400, map[string]string{"error": "Invalid customer ID"})
 			}
 
 			var updatedCustomer Customer
 			if err := c.Bind(&updatedCustomer); err != nil {
+				cs.log.Error().Err(err).Msg("Invalid request body")
 				return c.JSON(400, map[string]string{"error": "Invalid request body"})
 			}
 			updatedCustomer.ID = id
 
 			if err := cs.UpdateCustomer(c.Request().Context(), updatedCustomer); err != nil {
+				cs.log.Error().Err(err).Msg("Failed to update customer")
 				return c.JSON(500, map[string]string{"error": "Failed to update customer"})
 			}
 			return c.JSON(200, updatedCustomer)
@@ -84,10 +95,12 @@ func (cs *CustomerService) RouteAdder() func(e *echo.Echo) {
 			idParam := c.Param("id")
 			id, err := uuid.Parse(idParam)
 			if err != nil {
+				cs.log.Error().Err(err).Msg("Invalid customer ID")
 				return c.JSON(400, map[string]string{"error": "Invalid customer ID"})
 			}
 
 			if err := cs.DeleteCustomer(c.Request().Context(), id); err != nil {
+				cs.log.Error().Err(err).Msg("Failed to delete customer")
 				return c.JSON(500, map[string]string{"error": "Failed to delete customer"})
 			}
 			return c.NoContent(204)

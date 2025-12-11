@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	test "github.com/romanWienicke/go-app-test/foundation/testing"
+	"github.com/rs/zerolog"
 )
 
 func TestCustomerService(t *testing.T) {
@@ -23,7 +24,8 @@ func TestCustomerService(t *testing.T) {
 	})
 
 	ctx := context.Background()
-	customerService := NewCustomerService(db)
+	log := zerolog.Nop()
+	customerService := NewCustomerService(db, &log)
 
 	// Test CreateCustomer
 	newCustomer := Customer{

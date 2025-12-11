@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"github.com/romanWienicke/go-app-test/foundation/postgres"
+	"github.com/rs/zerolog"
 )
 
 type Product struct {
@@ -22,12 +23,14 @@ func Validate(p Product) error {
 }
 
 type ProductService struct {
-	db *postgres.Db
+	db  *postgres.Db
+	log *zerolog.Logger
 }
 
-func NewProductService(db *postgres.Db) *ProductService {
+func NewProductService(db *postgres.Db, log *zerolog.Logger) *ProductService {
 	return &ProductService{
-		db: db,
+		db:  db,
+		log: log,
 	}
 }
 
@@ -36,11 +39,13 @@ func (p *ProductService) RouteAdder() func(e *echo.Echo) {
 		e.POST("/product", func(c echo.Context) error {
 			var newProduct Product
 			if err := c.Bind(&newProduct); err != nil {
+				p.log.Printf("Failed to bind product: %v", err)
 				return c.JSON(400, map[string]string{"error": "Invalid request body"})
 			}
 
 			id, err := p.CreateProduct(c.Request().Context(), newProduct)
 			if err != nil {
+				p.log.Error().Err(err).Msg("Failed to create product")
 				return c.JSON(500, map[string]string{"error": "Failed to create product"})
 			}
 
@@ -52,14 +57,17 @@ func (p *ProductService) RouteAdder() func(e *echo.Echo) {
 			idParam := c.Param("id")
 			id, err := uuid.Parse(idParam)
 			if err != nil {
+				p.log.Error().Err(err).Msg("Invalid product ID")
 				return c.JSON(400, map[string]string{"error": "Invalid product ID"})
 			}
 
 			product, err := p.GetProductByID(c.Request().Context(), id)
 			if err != nil {
 				if err == postgres.ErrNoRows {
+					p.log.Error().Err(err).Msg("Product not found")
 					return c.JSON(404, map[string]string{"error": "Product not found"})
 				}
+				p.log.Error().Err(err).Msg("Failed to retrieve product")
 				return c.JSON(500, map[string]string{"error": "Failed to retrieve product"})
 			}
 			return c.JSON(200, product)
@@ -69,16 +77,19 @@ func (p *ProductService) RouteAdder() func(e *echo.Echo) {
 			idParam := c.Param("id")
 			id, err := uuid.Parse(idParam)
 			if err != nil {
+				p.log.Error().Err(err).Msg("Invalid product ID")
 				return c.JSON(400, map[string]string{"error": "Invalid product ID"})
 			}
 
 			var updatedProduct Product
 			if err := c.Bind(&updatedProduct); err != nil {
+				p.log.Error().Err(err).Msg("Invalid request body")
 				return c.JSON(400, map[string]string{"error": "Invalid request body"})
 			}
 			updatedProduct.ID = id
 
 			if err := p.UpdateProduct(c.Request().Context(), updatedProduct); err != nil {
+				p.log.Error().Err(err).Msg("Failed to update product")
 				return c.JSON(500, map[string]string{"error": "Failed to update product"})
 			}
 			return c.JSON(200, updatedProduct)
@@ -88,10 +99,12 @@ func (p *ProductService) RouteAdder() func(e *echo.Echo) {
 			idParam := c.Param("id")
 			id, err := uuid.Parse(idParam)
 			if err != nil {
+				p.log.Error().Err(err).Msg("Invalid product ID")
 				return c.JSON(400, map[string]string{"error": "Invalid product ID"})
 			}
 
 			if err := p.DeleteProduct(c.Request().Context(), id); err != nil {
+				p.log.Error().Err(err).Msg("Failed to delete product")
 				return c.JSON(500, map[string]string{"error": "Failed to delete product"})
 			}
 			return c.NoContent(204)

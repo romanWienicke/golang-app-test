@@ -127,7 +127,7 @@ func fromCompose(composeFile string, serviceNames []string) (map[string]Containe
 			HostPorts: hostPorts,
 		}
 		containers[serviceName] = c
-		waitForHealthy(serviceName, 20*time.Second)
+		waitForHealthy(serviceName, hostPorts, 20*time.Second)
 	}
 
 	return containers, nil
@@ -201,14 +201,14 @@ func getServicePortsFromCompose(serviceName string, service Service) ([]portMapp
 	return portMappings, nil
 }
 
-func waitForHealthy(containerName string, timeout time.Duration) {
+func waitForHealthy(containerName string, hostPorts map[string]string, timeout time.Duration) {
 	fmt.Printf("Checking if %s is healthy\n", containerName)
 	for i := 0; i < int(timeout.Seconds()); i++ {
 		cmd := exec.Command("docker", "inspect", "--format", "{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}", containerName)
 		out, err := cmd.Output()
 		status := strings.TrimSpace(string(out))
 		if err == nil && status == "healthy" {
-			fmt.Printf("%s is healthy\n", containerName)
+			fmt.Printf("%s is healthy on ports %v\n", containerName, hostPorts)
 
 			return
 		}

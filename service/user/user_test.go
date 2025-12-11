@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	test "github.com/romanWienicke/go-app-test/foundation/testing"
+	"github.com/rs/zerolog"
 )
 
 func TestCreateUser(t *testing.T) {
@@ -22,7 +23,8 @@ func TestCreateUser(t *testing.T) {
 		test.DockerComposeDown(t, "../../docker-compose.yaml")
 	})
 
-	userService := NewUserService(db)
+	log := zerolog.Nop()
+	userService := NewUserService(db, &log)
 
 	newUser := User{
 		Name:  "Test User",
