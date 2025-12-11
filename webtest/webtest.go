@@ -88,7 +88,7 @@ func (app *WebTest) request(t *testing.T, url, method string, payload any) *Resp
 		switch v := payload.(type) {
 		case string:
 			bodyReader = strings.NewReader(app.replaceBagValue(t, v, false))
-		case map[string]interface{}:
+		case map[string]any:
 			jsonBytes, err := json.Marshal(v)
 			if err != nil {
 				t.Fatalf("Failed to marshal payload: %v", err)
@@ -195,13 +195,13 @@ func (app *WebTest) expect(t *testing.T, resp *ResponseWithTime, expectedStatus 
 			if bodyString != v {
 				t.Errorf("Expected body %v, got %v", v, bodyString)
 			}
-		case map[string]interface{}:
+		case map[string]any:
 			// Compare as JSON
 			bodyBytes, err := io.ReadAll(resp.Response.Body)
 			if err != nil {
 				t.Fatalf("Failed to read response body: %v", err)
 			}
-			var actualBody map[string]interface{}
+			var actualBody map[string]any
 			if err := json.Unmarshal(bodyBytes, &actualBody); err != nil {
 				t.Fatalf("Failed to unmarshal response body: %v", err)
 			}
@@ -214,7 +214,7 @@ func (app *WebTest) expect(t *testing.T, resp *ResponseWithTime, expectedStatus 
 	}
 }
 
-func equalJSON(a, b map[string]interface{}) bool {
+func equalJSON(a, b map[string]any) bool {
 	if len(a) != len(b) {
 		return false
 	}
@@ -224,8 +224,8 @@ func equalJSON(a, b map[string]interface{}) bool {
 			return false
 		}
 		switch vA := vA.(type) {
-		case map[string]interface{}:
-			vBMap, ok := vB.(map[string]interface{})
+		case map[string]any:
+			vBMap, ok := vB.(map[string]any)
 			if !ok {
 				return false
 			}

@@ -62,7 +62,7 @@ func Test_Application(t *testing.T) {
 		{"POST /user with valid data", webtest.TestCase{
 			Method:              http.MethodPost,
 			Path:                "/user",
-			Payload:             map[string]interface{}{"name": "Alice", "email": "alice@example.com"},
+			Payload:             map[string]any{"name": "Alice", "email": "alice@example.com"},
 			ExpectedCode:        http.StatusCreated,
 			ExpectedBodyPattern: "{\"id\":(?P<userId>\\d+),\"name\":\"Alice\",\"email\":\"alice@example.com\"}",
 		}},
@@ -75,7 +75,7 @@ func Test_Application(t *testing.T) {
 		{"POST /customer with valid data", webtest.TestCase{
 			Method:              http.MethodPost,
 			Path:                "/customer",
-			Payload:             map[string]interface{}{"name": "Bob", "email": "bob@example.com"},
+			Payload:             map[string]any{"name": "Bob", "email": "bob@example.com"},
 			ExpectedCode:        http.StatusCreated,
 			ExpectedBodyPattern: "{\"id\":\"(?P<customerId>[0-9a-fA-F-]{36})\",\"name\":\"Bob\",\"email\":\"bob@example.com\"}",
 		}},
@@ -88,7 +88,7 @@ func Test_Application(t *testing.T) {
 		{"PUT /customer/:customerId", webtest.TestCase{
 			Method:              http.MethodPut,
 			Path:                "/customer/:customerId",
-			Payload:             map[string]interface{}{"name": "Robert", "email": "robert@example.com"},
+			Payload:             map[string]any{"name": "Robert", "email": "robert@example.com"},
 			ExpectedCode:        http.StatusOK,
 			ExpectedBodyPattern: "{\"id\":\"[0-9a-fA-F-]{36}\",\"name\":\"Robert\",\"email\":\"robert@example.com\"}",
 		}},
@@ -102,7 +102,7 @@ func Test_Application(t *testing.T) {
 		{"POST /product with valid data", webtest.TestCase{
 			Method:              http.MethodPost,
 			Path:                "/product",
-			Payload:             map[string]interface{}{"name": "Widget", "price": 19.99},
+			Payload:             map[string]any{"name": "Widget", "price": 19.99},
 			ExpectedCode:        http.StatusCreated,
 			ExpectedBodyPattern: "{\"id\":\"(?P<productId>[0-9a-fA-F-]{36})\",\"name\":\"Widget\",\"description\":\"\",\"price\":19.99}",
 		}},
@@ -115,7 +115,7 @@ func Test_Application(t *testing.T) {
 		{"PUT /product/:productId", webtest.TestCase{
 			Method:              http.MethodPut,
 			Path:                "/product/:productId",
-			Payload:             map[string]interface{}{"name": "Super Widget", "description": "An improved widget", "price": 29.99},
+			Payload:             map[string]any{"name": "Super Widget", "description": "An improved widget", "price": 29.99},
 			ExpectedCode:        http.StatusOK,
 			ExpectedBodyPattern: "{\"id\":\"[0-9a-fA-F-]{36}\",\"name\":\"Super Widget\",\"description\":\"An improved widget\",\"price\":29.99}",
 		}},
@@ -129,7 +129,7 @@ func Test_Application(t *testing.T) {
 		{"POST /order with valid data", webtest.TestCase{
 			Method: http.MethodPost,
 			Path:   "/order",
-			Payload: map[string]interface{}{"customer_id": ":customerId", "status": "pending", "total": 39.98, "items": []map[string]interface{}{
+			Payload: map[string]any{"customer_id": ":customerId", "status": "pending", "total": 39.98, "items": []map[string]any{
 				{"product_id": ":productId", "quantity": 2},
 			}},
 			ExpectedCode:        http.StatusCreated,
@@ -144,7 +144,7 @@ func Test_Application(t *testing.T) {
 		{"PUT /order/:orderId", webtest.TestCase{
 			Method: http.MethodPut,
 			Path:   "/order/:orderId",
-			Payload: map[string]interface{}{"customer_id": ":customerId", "status": "pending", "total": 11.98, "items": []map[string]interface{}{
+			Payload: map[string]any{"customer_id": ":customerId", "status": "pending", "total": 11.98, "items": []map[string]any{
 				{"product_id": ":productId", "quantity": 3},
 			}},
 			ExpectedCode:        http.StatusOK,
