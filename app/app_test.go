@@ -78,7 +78,7 @@ func Test_Application(t *testing.T) {
 			Payload:             map[string]interface{}{"name": "Bob", "email": "bob@example.com"},
 			ExpectedCode:        http.StatusCreated,
 			ExpectedBodyPattern: "{\"id\":\"(?P<customerId>[0-9a-fA-F-]{36})\",\"name\":\"Bob\",\"email\":\"bob@example.com\"}",
-		}}, // 0d05ad82-5f7c-45f5-b8c1-3059307cff65
+		}},
 		{"GET /customer/:customerId", webtest.TestCase{
 			Method:              http.MethodGet,
 			Path:                "/customer/:customerId",
@@ -98,11 +98,7 @@ func Test_Application(t *testing.T) {
 			ExpectedCode:        http.StatusOK,
 			ExpectedBodyPattern: "{\"id\":\"[0-9a-fA-F-]{36}\",\"name\":\"Robert\",\"email\":\"robert@example.com\"}",
 		}},
-		{"DELETE /customer/:customerId", webtest.TestCase{
-			Method:       http.MethodDelete,
-			Path:         "/customer/:customerId",
-			ExpectedCode: http.StatusNoContent,
-		}},
+
 		{"POST /product with valid data", webtest.TestCase{
 			Method:              http.MethodPost,
 			Path:                "/product",
@@ -129,44 +125,52 @@ func Test_Application(t *testing.T) {
 			ExpectedCode:        http.StatusOK,
 			ExpectedBodyPattern: "{\"id\":\"[0-9a-fA-F-]{36}\",\"name\":\"Super Widget\",\"description\":\"An improved widget\",\"price\":29.99}",
 		}},
-		{"DELETE /product/:productId", webtest.TestCase{
-			Method:       http.MethodDelete,
-			Path:         "/product/:productId",
-			ExpectedCode: http.StatusNoContent,
-		}},
-		/*{"POST /order with valid data", webtest.TestCase{
+
+		{"POST /order with valid data", webtest.TestCase{
 			Method: http.MethodPost,
 			Path:   "/order",
-			Payload: map[string]interface{}{"customer_id": "00000000-0000-0000-0000-000000000000", "items": []map[string]interface{}{
-				{"product_id": "11111111-1111-1111-1111-111111111111", "quantity": 2},
+			Payload: map[string]interface{}{"customer_id": ":customerId", "status": "pending", "total": 39.98, "items": []map[string]interface{}{
+				{"product_id": ":productId", "quantity": 2},
 			}},
 			ExpectedCode:        http.StatusCreated,
-			ExpectedBodyPattern: "{\"id\":\"(?P<orderId>[0-9a-fA-F-]{36})\",\"customer_id\":\"00000000-0000-0000-0000-000000000000\",\"items\":\\[\\]}",
+			ExpectedBodyPattern: "{\"id\":\"(?P<orderId>[0-9a-fA-F-]{36})\",\"customer_id\":\":customerId\",\"status\":\"pending\",\"total\":39.98,\"items\":\\[\\{\"id\":\"[0-9a-fA-F-]{36}\",\"order_id\":\"[0-9a-fA-F-]{36}\",\"product_id\":\":productId\",\"quantity\":2\\}\\]\\}",
 		}},
 		{"GET /order/:orderId", webtest.TestCase{
 			Method:              http.MethodGet,
 			Path:                "/order/:orderId",
 			ExpectedCode:        http.StatusOK,
-			ExpectedBodyPattern: "{\"id\":\"[0-9a-fA-F-]{36}\",\"customer_id\":\"00000000-0000-0000-0000-000000000000\",\"product_ids\":\\[\\]}",
+			ExpectedBodyPattern: "{\"id\":\":orderId\",\"customer_id\":\":customerId\",\"status\":\"pending\",\"total\":39.98,\"items\":\\[\\{\"id\":\"[0-9a-fA-F-]{36}\",\"order_id\":\"[0-9a-fA-F-]{36}\",\"product_id\":\":productId\",\"quantity\":2}\\]\\}",
 		}},
 		{"PUT /order/:orderId", webtest.TestCase{
-			Method:              http.MethodPut,
-			Path:                "/order/:orderId",
-			Payload:             map[string]interface{}{"customer_id": "00000000-0000-0000-0000-000000000000", "product_ids": []string{"11111111-1111-1111-1111-111111111111"}},
+			Method: http.MethodPut,
+			Path:   "/order/:orderId",
+			Payload: map[string]interface{}{"customer_id": ":customerId", "status": "pending", "total": 11.98, "items": []map[string]interface{}{
+				{"product_id": ":productId", "quantity": 3},
+			}},
 			ExpectedCode:        http.StatusOK,
-			ExpectedBodyPattern: "{\"id\":\"[0-9a-fA-F-]{36}\",\"customer_id\":\"00000000-0000-0000-0000-000000000000\",\"product_ids\":\\[\"11111111-1111-1111-1111-111111111111\"\\]}",
+			ExpectedBodyPattern: "{\"id\":\"[0-9a-fA-F-]{36}\",\"customer_id\":\":customerId\",\"status\":\"pending\",\"total\":11.98,\"items\":\\[\\{\"id\":\"[0-9a-fA-F-]{36}\",\"order_id\":\"[0-9a-fA-F-]{36}\",\"product_id\":\":productId\",\"quantity\":3\\}\\]\\}",
 		}},
 		{"GET /order/:orderId after update", webtest.TestCase{
 			Method:              http.MethodGet,
 			Path:                "/order/:orderId",
 			ExpectedCode:        http.StatusOK,
-			ExpectedBodyPattern: "{\"id\":\"[0-9a-fA-F-]{36}\",\"customer_id\":\"00000000-0000-0000-0000-000000000000\",\"product_ids\":\\[\"11111111-1111-1111-1111-111111111111\"\\]}",
+			ExpectedBodyPattern: "{\"id\":\":orderId\",\"customer_id\":\":customerId\",\"status\":\"pending\",\"total\":11.98,\"items\":\\[\\{\"id\":\"[0-9a-fA-F-]{36}\",\"order_id\":\"[0-9a-fA-F-]{36}\",\"product_id\":\":productId\",\"quantity\":3\\}\\]\\}",
 		}},
 		{"DELETE /order/:orderId", webtest.TestCase{
 			Method:       http.MethodDelete,
 			Path:         "/order/:orderId",
 			ExpectedCode: http.StatusNoContent,
-		}},*/
+		}},
+		{"DELETE /product/:productId", webtest.TestCase{
+			Method:       http.MethodDelete,
+			Path:         "/product/:productId",
+			ExpectedCode: http.StatusNoContent,
+		}},
+		{"DELETE /customer/:customerId", webtest.TestCase{
+			Method:       http.MethodDelete,
+			Path:         "/customer/:customerId",
+			ExpectedCode: http.StatusNoContent,
+		}},
 	}
 
 	for _, tc := range tests {

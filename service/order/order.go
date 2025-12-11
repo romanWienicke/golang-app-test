@@ -163,6 +163,21 @@ func (o *OrderService) UpdateOrder(ctx context.Context, order Order) error {
 	_, err := o.db.GetDB().ExecContext(ctx,
 		"update orders set customer_id=$1, status=$2, total=$3 where id=$4;",
 		order.CustomerID, order.Status, order.Total, order.ID)
+
+	for _, item := range order.Items {
+		item.OrderID = order.ID
+		if err := ValidateItem(item); err != nil {
+			return err
+		}
+
+		_, err := o.db.GetDB().ExecContext(ctx,
+			"update order_items set quantity=$1 where order_id=$2 and product_id=$3;",
+			item.Quantity, order.ID, item.ProductID)
+		if err != nil {
+			return err
+		}
+	}
+
 	return err
 }
 
