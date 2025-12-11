@@ -7,6 +7,12 @@ lint:
 test:
 	go test --count=1 -v ./...
 
+app-test:
+	go test -v --count=1 ./app/...
+
+service-test:
+	go test -v --count=1 ./service/...
+
 tidy:
 	go mod tidy
 
