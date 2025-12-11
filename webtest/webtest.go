@@ -27,7 +27,7 @@ type WebTest struct {
 	port    string
 	client  *http.Client
 	baseURL string
-	bag     map[string]any
+	bag     map[string]string
 }
 
 type ResponseWithTime struct {
@@ -37,11 +37,11 @@ type ResponseWithTime struct {
 
 func NewWebTest(port string) *WebTest {
 	client := &http.Client{
-		Timeout: 5 * time.Second,
+		Timeout: 30 * time.Second,
 	}
 
 	url := fmt.Sprintf("http://localhost:%s/", port)
-	bag := make(map[string]any)
+	bag := make(map[string]string)
 
 	return &WebTest{port: port, client: client, baseURL: url, bag: bag}
 }
@@ -57,28 +57,43 @@ func (app *WebTest) RunTest(t *testing.T, tc TestCase) time.Duration {
 	return resp.Elapsed
 }
 
+var regexEscape = regexp.MustCompile(`([\\\.\+\*\?\[\^\]\$\(\)\{\}=!<>|:-])`)
+
+// replaceBagValue replaces placeholders in the test cases with actual values from the bag
+func (app *WebTest) replaceBagValue(t *testing.T, target string, isRegex bool) string {
+	for key, value := range app.bag {
+		placeholder := ":" + key
+		if strings.Contains(target, placeholder) {
+			if isRegex {
+				exVal := regexEscape.ReplaceAllString(value, `\$1`)
+				target = strings.ReplaceAll(target, placeholder, fmt.Sprintf("%v", exVal))
+				continue
+			}
+
+			target = strings.ReplaceAll(target, placeholder, fmt.Sprintf("%v", value))
+		}
+	}
+
+	return target
+}
+
 func (app *WebTest) request(t *testing.T, url, method string, payload any) *ResponseWithTime {
 	client := app.client
 
-	for key, value := range app.bag {
-		placeholder := ":" + key
-		if strings.Contains(url, placeholder) {
-			url = strings.ReplaceAll(url, placeholder, fmt.Sprintf("%v", value))
-		}
-	}
+	url = app.replaceBagValue(t, url, false)
 
 	if payload != nil {
 		var bodyReader io.Reader
 
 		switch v := payload.(type) {
 		case string:
-			bodyReader = strings.NewReader(v)
+			bodyReader = strings.NewReader(app.replaceBagValue(t, v, false))
 		case map[string]interface{}:
 			jsonBytes, err := json.Marshal(v)
 			if err != nil {
 				t.Fatalf("Failed to marshal payload: %v", err)
 			}
-			bodyReader = strings.NewReader(string(jsonBytes))
+			bodyReader = strings.NewReader(app.replaceBagValue(t, string(jsonBytes), false))
 		default:
 			t.Fatalf("Unsupported payload type: %T", payload)
 		}
@@ -141,6 +156,7 @@ func (app *WebTest) expectRegex(t *testing.T, resp *ResponseWithTime, expectedSt
 		t.Fatalf("Failed to read response body: %v", err)
 	}
 	bodyString := strings.TrimSpace(string(bodyBytes))
+	expectedBodyPattern = app.replaceBagValue(t, expectedBodyPattern, true)
 	regexp := regexp.MustCompile(expectedBodyPattern)
 	match := regexp.FindStringSubmatch(bodyString)
 

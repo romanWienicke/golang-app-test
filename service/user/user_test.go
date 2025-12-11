@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/romanWienicke/go-app-test/business/user/data"
 	test "github.com/romanWienicke/go-app-test/foundation/testing"
 )
 
@@ -23,9 +22,9 @@ func TestCreateUser(t *testing.T) {
 		test.DockerComposeDown(t, "../../docker-compose.yaml")
 	})
 
-	userService := NewUser(db)
+	userService := NewUserService(db)
 
-	newUser := data.DbUser{
+	newUser := User{
 		Name:  "Test User",
 		Email: "testuser@example.com",
 	}
