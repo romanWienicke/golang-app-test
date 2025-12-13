@@ -28,6 +28,11 @@ var (
 	composeMu    sync.Mutex
 )
 
+const (
+	composeLockTimeout = 90 * time.Second
+	startupTimeout     = 60 * time.Second
+)
+
 // ComposeUp starts the specified docker-compose services and returns their container information.
 // If no service names are provided, all services in the compose file are started.
 // It returns a map of service names to their corresponding Container information.
@@ -36,7 +41,7 @@ func ComposeUp(t *testing.T, composeFile string, serviceNames ...string) (map[st
 	defer composeMu.Unlock()
 
 	// inter-process lock
-	if err := lock(composeLockPath, 30*time.Second); err != nil {
+	if err := lock(composeLockPath, composeLockTimeout); err != nil {
 		return nil, err
 	}
 	defer unlock(composeLockPath)
@@ -75,7 +80,7 @@ func ComposeDown(t *testing.T, composeFile string, serviceNames ...string) error
 	defer composeMu.Unlock()
 
 	// inter-process lock
-	if err := lock(composeLockPath, 30*time.Second); err != nil {
+	if err := lock(composeLockPath, composeLockTimeout); err != nil {
 		return err
 	}
 	defer unlock(composeLockPath)
@@ -127,7 +132,7 @@ func fromCompose(composeFile string, serviceNames []string) (map[string]Containe
 			HostPorts: hostPorts,
 		}
 		containers[serviceName] = c
-		waitForHealthy(serviceName, hostPorts, 20*time.Second)
+		waitForHealthy(serviceName, hostPorts, startupTimeout)
 	}
 
 	return containers, nil

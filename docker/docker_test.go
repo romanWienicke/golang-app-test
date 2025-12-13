@@ -10,8 +10,8 @@ func Test_DockerCompose(t *testing.T) {
 		t.Errorf("Failed to start Docker Compose: %v", err)
 	}
 
-	if len(containers) != 5 {
-		t.Errorf("Expected 2 containers, got %d", len(containers))
+	if len(containers) != 6 {
+		t.Errorf("Expected 6 containers, got %d", len(containers))
 	}
 
 	for name, container := range containers {
@@ -31,7 +31,7 @@ func Test_DockerCompose(t *testing.T) {
 	t.Cleanup(func() {
 		t.Helper()
 
-		if err := ComposeDown(t, "../docker/docker-compose.yaml"); err != nil {
+		if err := ComposeDown(t, "docker-compose.yaml"); err != nil {
 			t.Errorf("Failed to stop Kafka container: %v", err)
 		}
 	})
@@ -72,7 +72,7 @@ func Test_DockerCompose_SpecificService(t *testing.T) {
 			t.Cleanup(func() {
 				t.Helper()
 
-				if err := ComposeDown(t, "../docker/docker-compose.yaml", tc.serviceNames...); err != nil {
+				if err := ComposeDown(t, "docker-compose.yaml", tc.serviceNames...); err != nil {
 					t.Errorf("Failed to stop containers: %v", err)
 				}
 			})
