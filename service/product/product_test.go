@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	test "github.com/romanWienicke/go-app-test/foundation/testing"
+	"github.com/rs/zerolog"
 )
 
 func TestCreateProduct(t *testing.T) {
@@ -23,7 +24,8 @@ func TestCreateProduct(t *testing.T) {
 		test.DockerComposeDown(t, "../../docker-compose.yaml")
 	})
 
-	productService := NewProductService(db)
+	log := zerolog.Nop()
+	productService := NewProductService(db, &log)
 
 	newProduct := Product{
 		Name:        "Test Product",

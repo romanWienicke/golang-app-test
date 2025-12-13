@@ -7,6 +7,7 @@ import (
 	test "github.com/romanWienicke/go-app-test/foundation/testing"
 	"github.com/romanWienicke/go-app-test/service/customer"
 	"github.com/romanWienicke/go-app-test/service/product"
+	"github.com/rs/zerolog"
 )
 
 func TestCreateOrder(t *testing.T) {
@@ -24,8 +25,8 @@ func TestCreateOrder(t *testing.T) {
 		t.Helper()
 		test.DockerComposeDown(t, "../../docker-compose.yaml")
 	})
-
-	customerService := customer.NewCustomerService(db)
+	log := zerolog.Nop()
+	customerService := customer.NewCustomerService(db, &log)
 	// Create a customer to associate with the product if needed
 	customerID, err := customerService.CreateCustomer(context.Background(), customer.Customer{
 		Name:  "Test Customer",
@@ -35,7 +36,7 @@ func TestCreateOrder(t *testing.T) {
 		t.Fatalf("Failed to create customer: %v", err)
 	}
 
-	productService := product.NewProductService(db)
+	productService := product.NewProductService(db, &log)
 	// Create a product to associate with the order
 	productID, err := productService.CreateProduct(context.Background(), product.Product{
 		Name:        "Test Product",
@@ -46,7 +47,7 @@ func TestCreateOrder(t *testing.T) {
 		t.Fatalf("Failed to create product: %v", err)
 	}
 
-	orderService := NewOrderService(db)
+	orderService := NewOrderService(db, &log)
 	newOrder := Order{
 		CustomerID: customerID,
 		Status:     "pending",

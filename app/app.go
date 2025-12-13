@@ -2,7 +2,6 @@ package app
 
 import (
 	"errors"
-	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -13,6 +12,9 @@ import (
 	orderService "github.com/romanWienicke/go-app-test/service/order"
 	productService "github.com/romanWienicke/go-app-test/service/product"
 	userService "github.com/romanWienicke/go-app-test/service/user"
+
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 type app struct {
@@ -23,16 +25,13 @@ type app struct {
 	productService  *productService.ProductService
 }
 
+var logger zerolog.Logger
+
 func NewApp() (*app, error) {
 	app := &app{}
 	if err := app.init(); err != nil {
 		return nil, err
 	}
-
-	app.userService = userService.NewUserService(app.db)
-	app.orderService = orderService.NewOrderService(app.db)
-	app.customerService = customerService.NewCustomerService(app.db)
-	app.productService = productService.NewProductService(app.db)
 
 	return app, nil
 }
@@ -54,7 +53,7 @@ func (a *app) runServer() {
 			a.orderService.RouteAdder(),
 			a.customerService.RouteAdder(),
 			a.productService.RouteAdder()); err != nil {
-			log.Fatalf("Server failed: %v", err)
+			logger.Fatal().Err(err).Msg("Server failed")
 		}
 	}()
 
@@ -63,9 +62,9 @@ func (a *app) runServer() {
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 	<-quit
 
-	log.Println("Shutting down gracefully...")
+	logger.Info().Msg("Shutting down gracefully...")
 	if err := a.Close(); err != nil {
-		log.Printf("Error during shutdown: %v", err)
+		logger.Error().Err(err).Msg("Error during shutdown")
 	}
 }
 
@@ -79,12 +78,16 @@ func (a *app) Close() error {
 func (a *app) init() error {
 	var errs error
 
+	logger = zerolog.New(os.Stderr)
+	zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout})
+
 	errs = errors.Join(errs, a.initPostgres())
 
-	a.userService = userService.NewUserService(a.db)
-	a.orderService = orderService.NewOrderService(a.db)
-	a.customerService = customerService.NewCustomerService(a.db)
-	a.productService = productService.NewProductService(a.db)
+	a.userService = userService.NewUserService(a.db, &logger)
+	a.orderService = orderService.NewOrderService(a.db, &logger)
+	a.customerService = customerService.NewCustomerService(a.db, &logger)
+	a.productService = productService.NewProductService(a.db, &logger)
 	return errs
 }
 

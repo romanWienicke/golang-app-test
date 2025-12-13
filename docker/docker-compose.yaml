@@ -17,7 +17,7 @@ services:
       KAFKA_PROCESS_ROLES: broker,controller
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
       KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://127.0.0.1:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_LOG_DIRS: /tmp/kraft-combined-logs
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
@@ -26,7 +26,7 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       CLUSTER_ID: "w7QkQ1v2Qk9rQ1v2Qk9rQw"
     healthcheck:
-      test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list || exit 1"]
+      test: ["CMD-SHELL", "kafka-topics --bootstrap-server kafka:9092 --list || exit 1"]
       interval: 1s
       timeout: 10s
       retries: 20
@@ -36,7 +36,7 @@ services:
     container_name: timescale
     ports:
       - target: 5432
-        published: 5432
+        published: 0
         protocol: tcp
         mode: host
     environment:
@@ -52,7 +52,7 @@ services:
     container_name: redis
     ports:
       - target: 6379
-        published: 6379
+        published: 0
         protocol: tcp
         mode: host
     healthcheck:
@@ -65,7 +65,7 @@ services:
     container_name: mongodb
     ports:
       - target: 27017
-        published: 27017
+        published: 0
         protocol: tcp
         mode: host
     environment:
@@ -97,7 +97,7 @@ services:
     container_name: mariadb
     ports:
       - target: 3306
-        published: 3306
+        published: 0
         protocol: tcp
         mode: host
     environment:
